@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFL Fantasy Dominator | 10-Team Full-PPR AI Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=1.6">
+</head>
+<body class="dark-theme">
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <div class="brand-icon">⚡</div>
+                <div class="brand-text">
+                    <h1>NFL FANTASY <span class="accent-text">DOMINATOR</span></h1>
+                    <span class="badge badge-ppr">10-TEAM FULL-PPR AI</span>
+                </div>
+            </div>
+            
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-tab="draft-tab">
+                    <span class="icon">🎯</span> Live Draft Assistant
+                </button>
+                <button class="nav-tab" data-tab="lineup-tab">
+                    <span class="icon">⚡</span> Lineup Optimizer
+                </button>
+                <button class="nav-tab" data-tab="waiver-tab">
+                    <span class="icon">📡</span> Waiver Arbitrage Radar
+                </button>
+                <button class="nav-tab" data-tab="espn-tab">
+                    <span class="icon">🏈</span> ESPN League Sync
+                </button>
+            </nav>
+
+            <div class="header-status">
+                <span id="league-sync-pill" class="sync-pill sync-demo">
+                    <span class="indicator"></span> <span id="sync-status-text">Demo 10-Team League</span>
+                </span>
+                <button id="btn-refresh-data" class="btn btn-secondary btn-sm" title="Refresh teams, rosters, and player data">
+                    <span class="refresh-icon">🔄</span> Refresh Data
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <!-- ================= TAB 1: LIVE DRAFT ASSISTANT ================= -->
+        <section id="draft-tab" class="tab-content active">
+            <div class="draft-telemetry-bar">
+                <div class="telemetry-card">
+                    <span class="label">CURRENT PICK</span>
+                    <div class="value-group">
+                        <span id="current-round-text" class="val-round">Round 1</span>
+                        <span id="current-pick-text" class="val-pick">Pick 1.01 (Overall #1)</span>
+                    </div>
+                </div>
+                <div class="telemetry-card">
+                    <span class="label">MY TEAM / DRAFT POSITION</span>
+                    <select id="user-team-select" class="text-input" style="padding: 4px 8px; font-size: 0.85rem; font-weight: 700; background: rgba(15, 23, 42, 0.6); color: var(--accent-cyan); border: 1px solid var(--border-glass); border-radius: 6px; cursor: pointer;">
+                        <!-- Populated with real ESPN teams -->
+                    </select>
+                </div>
+                <div class="telemetry-card">
+                    <span class="label">ON THE CLOCK</span>
+                    <span id="on-clock-team" class="val-team">...</span>
+                </div>
+                <div class="telemetry-card">
+                    <span class="label">PICKS UNTIL YOUR TURN</span>
+                    <span id="picks-until-turn" class="val-turn highlight-turn">ON THE CLOCK NOW!</span>
+                </div>
+                <div class="telemetry-actions">
+                    <button id="btn-sync-espn-draft" class="btn btn-primary" title="Pull latest picks directly from ESPN draft room">⚡ Sync ESPN</button>
+                    <button id="btn-toggle-auto-sync" class="btn btn-secondary" title="Automatically poll ESPN draft picks every 3 seconds">🟢 Auto-Sync: ON</button>
+                    <button id="btn-undo-pick" class="btn btn-secondary">↺ Undo</button>
+                    <button id="btn-reset-draft" class="btn btn-danger">⟳ Reset</button>
+                </div>
+            </div>
+
+            <!-- Dynamic Balanced Pick Recommendation Banner -->
+            <div id="balanced-pick-banner" class="balanced-rec-banner">
+                <div class="banner-left">
+                    <span class="banner-icon">💡</span>
+                    <div>
+                        <span class="banner-title">AI BALANCED ROSTER RECOMMENDATION</span>
+                        <h3 id="rec-player-title">Ja'Marr Chase (WR - CIN)</h3>
+                        <p id="rec-player-rationale">Top recommendation to build a balanced starting lineup.</p>
+                    </div>
+                </div>
+                <button id="btn-quick-draft-rec" class="btn btn-primary">Draft Top Recommendation</button>
+            </div>
+
+            <div class="draft-layout">
+                <!-- Left: Dynamic VORP Board -->
+                <div class="draft-vorp-panel">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Dynamic VORP & Roster Need Board</h2>
+                            <p class="panel-subtitle">Ranked by Balanced Roster Need (Click any row for deep breakdown)</p>
+                        </div>
+                        <div class="header-controls">
+                            <div class="search-input-wrapper">
+                                <span class="search-icon">🔍</span>
+                                <input type="text" id="draft-search-input" placeholder="Search player (e.g. Loveland, Jeanty)..." class="search-input" />
+                            </div>
+                            <div class="pos-filters">
+                                <button class="filter-btn active" data-pos="ALL">ALL</button>
+                                <button class="filter-btn" data-pos="RB">RB</button>
+                                <button class="filter-btn" data-pos="WR">WR</button>
+                                <button class="filter-btn" data-pos="TE">TE</button>
+                                <button class="filter-btn" data-pos="QB">QB</button>
+                                <button class="filter-btn" data-pos="K">K</button>
+                                <button class="filter-btn" data-pos="DEF">DEF</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="vorp-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="rank" title="Click to sort by default rank">Rank</th>
+                                    <th class="sortable" data-sort="name" title="Click to sort alphabetically by name">Player</th>
+                                    <th class="sortable" data-sort="position" title="Click to sort by position">Pos / Team</th>
+                                    <th class="sortable tier-col" data-sort="tier" title="Click to sort by Tier (1 -> 5)">Tier</th>
+                                    <th class="sortable" data-sort="need" title="Click to sort by Roster Need">Roster Fit</th>
+                                    <th class="sortable" data-sort="vorp" title="Click to sort by Dynamic VORP">Dyn. VORP</th>
+                                    <th class="sortable" data-sort="xfp" title="Click to sort by Expected Fantasy Points">xFP</th>
+                                    <th class="sortable" data-sort="projected_season" title="Click to sort by Projected Season Points">Proj Pts</th>
+                                    <th class="sortable" data-sort="cliff" title="Click to sort by Tier Drop Warnings">Tier Alert</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vorp-board-tbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Right: Opponent Sniffer & Your Roster -->
+                <div class="draft-sidebar">
+                    <!-- Opponent Threats -->
+                    <div class="glass-card threat-card">
+                        <h3><span class="icon">🕵️</span> Opponent Need Sniffer</h3>
+                        <p class="card-desc">Predicting picks of teams between you and your next turn</p>
+                        <div id="opponent-threats-list" class="threat-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- User Roster Live -->
+                    <div class="glass-card roster-card">
+                        <div class="card-header-flex">
+                            <h3><span class="icon">📋</span> Your Drafted Roster</h3>
+                            <span id="user-roster-count" class="count-badge">0 / 15</span>
+                        </div>
+                        <div id="drafted-user-roster" class="roster-grid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 2: WEEKLY LINEUP OPTIMIZER ================= -->
+        <section id="lineup-tab" class="tab-content">
+            <div class="lineup-control-bar">
+                <div class="mode-selector-group">
+                    <span class="label">OPTIMIZATION SOLVER MODE:</span>
+                    <div class="btn-group">
+                        <button class="mode-btn active" data-mode="balanced">⚖️ Balanced (xFP + Vegas)</button>
+                        <button class="mode-btn" data-mode="ceiling">🚀 High Ceiling (Boom Mode)</button>
+                        <button class="mode-btn" data-mode="floor">🛡️ Safe Floor (Cash/Must-Win)</button>
+                    </div>
+                </div>
+                <div class="total-score-badge">
+                    <span class="score-label">OPTIMAL PROJECTED TOTAL:</span>
+                    <span id="optimal-total-points" class="score-value">0.0</span>
+                    <span class="score-unit">PTS</span>
+                </div>
+            </div>
+
+            <div class="lineup-layout">
+                <!-- Optimal Starters -->
+                <div class="lineup-starters-panel">
+                    <div class="panel-header">
+                        <h2>Optimal Starting Lineup (10-Team PPR)</h2>
+                        <span class="badge badge-solver">PuLP Linear Solver</span>
+                    </div>
+                    <div id="starters-list" class="starters-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="panel-header mt-4">
+                        <h3>Bench Players</h3>
+                    </div>
+                    <div id="bench-list" class="bench-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Sit / Start Comparison Arena -->
+                <div class="lineup-compare-panel">
+                    <div class="glass-card compare-card">
+                        <h3><span class="icon">⚔️</span> Sit / Start Decision Arena</h3>
+                        <p class="card-desc">Multi-variable contextual comparison (Volume + Vegas + Weather)</p>
+
+                        <div class="compare-selectors">
+                            <div class="select-group">
+                                <label>Player A:</label>
+                                <select id="compare-player-a" class="select-input"></select>
+                            </div>
+                            <div class="vs-badge">VS</div>
+                            <div class="select-group">
+                                <label>Player B:</label>
+                                <select id="compare-player-b" class="select-input"></select>
+                            </div>
+                        </div>
+
+                        <button id="btn-run-compare" class="btn btn-primary btn-block">Run AI Sit/Start Analysis</button>
+
+                        <div id="compare-result-box" class="compare-result-box hidden">
+                            <div class="recommendation-header">
+                                <span class="badge badge-winner">RECOMMENDED</span>
+                                <h4 id="compare-winner-title">Start Player A</h4>
+                            </div>
+                            <ul id="compare-advantages-list" class="advantages-list"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 3: WAIVER & TRADE ARBITRAGE RADAR ================= -->
+        <section id="waiver-tab" class="tab-content">
+            <div class="waiver-header-banner">
+                <div>
+                    <h2>Waiver Opportunity & Trade Arbitrage Radar</h2>
+                    <p>Detecting leading predictive indicators (Route % Spikes, Red Zone touches, High-Value Touch share) before box scores reflect breakouts.</p>
+                </div>
+                <div class="arbitrage-summary-pill">
+                    <span class="icon">💎</span> Scan Pool: ESPN Unrostered Free Agents
+                </div>
+            </div>
+
+            <div class="waiver-grid-layout">
+                <!-- Breakout Signals -->
+                <div class="breakout-feed-panel">
+                    <div class="panel-header">
+                        <h3><span class="icon">🚀</span> High-Probability Breakout Targets</h3>
+                        <span class="badge badge-radar">Pre-Breakout Signals</span>
+                    </div>
+                    <div id="breakout-cards-container" class="breakout-cards-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Drop Candidate Delta -->
+                <div class="drop-candidates-panel">
+                    <div class="glass-card drop-card">
+                        <h3><span class="icon">📉</span> Drop Candidate Evaluator</h3>
+                        <p class="card-desc">Bench players with declining usage & sub-baseline projections</p>
+                        <div id="drop-candidates-list" class="drop-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 4: ESPN LEAGUE SYNC & SETTINGS ================= -->
+        <section id="espn-tab" class="tab-content">
+            <div class="settings-layout">
+                <div class="glass-card espn-connect-card">
+                    <div class="card-header-flex">
+                        <h2><span class="icon">🏈</span> ESPN League Connection</h2>
+                        <span id="connection-status-pill" class="badge badge-status">Demo Mode</span>
+                    </div>
+                    <p class="card-desc">Sync your live 10-team ESPN Fantasy Football league directly via `espn-api`.</p>
+
+                    <form id="espn-form" class="espn-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="espn-league-id">ESPN League ID *</label>
+                                <input type="text" id="espn-league-id" placeholder="e.g. 123456789" class="text-input" />
+                                <small class="help-text">Found in your ESPN fantasy league URL (`leagueId=...`)</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="espn-year">Season Year</label>
+                                <input type="number" id="espn-year" value="2024" class="text-input" />
+                            </div>
+                        </div>
+
+                        <div class="auth-collapsible">
+                            <h4>Private League Cookies <span class="optional-badge">(Only if league is set to Private)</span></h4>
+                            <div class="form-group">
+                                <label for="espn-swid">SWID Cookie</label>
+                                <input type="text" id="espn-swid" placeholder="{12345678-ABCD-1234-ABCD-1234567890AB}" class="text-input" />
+                            </div>
+                            <div class="form-group">
+                                <label for="espn-s2">espn_s2 Cookie</label>
+                                <input type="text" id="espn-s2" placeholder="AECxxxx..." class="text-input" />
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Connect & Sync ESPN</button>
+                            <button type="button" id="btn-use-demo" class="btn btn-secondary">Switch to 10-Team Demo Mode</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 10-Team League Standings & Rosters -->
+                <div class="glass-card league-standings-card">
+                    <h3><span class="icon">🏆</span> 10-Team League Standings & Rosters</h3>
+                    <div id="league-standings-table" class="standings-container">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ================= PLAYER RATING BREAKDOWN MODAL ================= -->
+    <div id="player-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <div class="modal-tags">
+                        <span id="modal-pos-badge" class="badge">WR</span>
+                        <span id="modal-team-tag" class="team-tag">CIN</span>
+                        <span id="modal-tier-badge" class="tier-badge tier-1">Tier 1</span>
+                    </div>
+                    <h2 id="modal-player-name">Ja'Marr Chase</h2>
+                    <p id="modal-player-archetype" class="archetype-desc">Consensus 1.01 Alpha Target Monster</p>
+                </div>
+                <button id="modal-close-btn" class="modal-close">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- VORP Key Metrics Row -->
+                <div class="modal-stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-box-label">DYNAMIC VORP</span>
+                        <span id="modal-vorp-val" class="stat-box-value highlight-emerald">+183.0</span>
+                        <span id="modal-vorp-sub" class="stat-box-sub">+11.4 / week</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-box-label">10-TEAM POS RANK</span>
+                        <span id="modal-pos-rank" class="stat-box-value highlight-cyan">#1 WR</span>
+                        <span id="modal-cutoff-sub" class="stat-box-sub">vs #25 Starter Cutoff</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-box-label">EXPECTED FANTASY PTS</span>
+                        <span id="modal-xfp-val" class="stat-box-value">21.8</span>
+                        <span class="stat-box-sub">xFP / game</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-box-label">PROJ SEASON PTS</span>
+                        <span id="modal-season-pts" class="stat-box-value">355.0</span>
+                        <span class="stat-box-sub">Full-PPR Model</span>
+                    </div>
+                </div>
+
+                <!-- Scouting Takeaway -->
+                <div class="modal-takeaway-card">
+                    <h4><span class="icon">💡</span> AI Rating Explanation & 10-Team Context</h4>
+                    <p id="modal-scouting-text"></p>
+                </div>
+
+                <!-- Deep Metrics Analysis List -->
+                <div class="modal-metrics-section">
+                    <h4>Granular Role & Opportunity Signals</h4>
+                    <div id="modal-metrics-list" class="metrics-list"></div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="modal-draft-btn" class="btn btn-primary btn-block">Draft This Player</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="app-footer">
+        <p>NFL Fantasy Dominator — Calibrated for 10-Team Full-PPR Dominance | Powered by xFP, Dynamic VORP, and ESPN Sync</p>
+    </footer>
+
+    <script src="app.js?v=1.9"></script>
+</body>
+</html>

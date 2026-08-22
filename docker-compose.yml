@@ -1,0 +1,25 @@
+services:
+  fantasy-dominator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nfl-fantasy-dominator
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - ESPN_S2=${ESPN_S2:-}
+      - SWID=${SWID:-}
+      - ESPN_LEAGUE_ID=${ESPN_LEAGUE_ID:-}
+      - ENVIRONMENT=production
+    volumes:
+      # Optional: Mount frontend and backend for hot-reloading in dev mode
+      - ./frontend:/app/frontend
+      - ./backend:/app/backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
