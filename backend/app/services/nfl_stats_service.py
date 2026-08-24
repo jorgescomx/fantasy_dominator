@@ -52,7 +52,7 @@ INITIAL_PLAYERS: List[Dict[str, Any]] = [
     {'id': 'te-ferguson', 'name': 'Jake Ferguson', 'position': 'TE', 'team': 'DAL', 'adp': 78.0, 'tier': 3, 'projected_season': 190.0, 'projected_week': 11.9, 'xfp': 11.8, 'route_participation': 0.78, 'high_value_touches': 3.9, 'red_zone_share': 0.27, 'target_share': 0.17, 'proe': 0.07, 'injury_status': 'ACTIVE', 'espn_ownership': 88.0, 'espn_proj': 11.5, 'bye_week': 7, 'opponent': 'NYG', 'implied_team_pts': 26.5, 'spread': -6.5, 'wind_mph': 5, 'is_dome': True, 'opp_rank_vs_pos': 20, 'archetype': 'Dak Prescott Red Zone Safety Valve'},
     {'id': 'te-njoku', 'name': 'David Njoku', 'position': 'TE', 'team': 'LAC', 'adp': 82.0, 'tier': 3, 'projected_season': 186.0, 'projected_week': 11.6, 'xfp': 11.5, 'route_participation': 0.77, 'high_value_touches': 3.7, 'red_zone_share': 0.26, 'target_share': 0.18, 'proe': 0.02, 'injury_status': 'ACTIVE', 'espn_ownership': 85.0, 'espn_proj': 11.0, 'bye_week': 10, 'opponent': 'CIN', 'implied_team_pts': 20.5, 'spread': 4.5, 'wind_mph': 9, 'is_dome': False, 'opp_rank_vs_pos': 22, 'archetype': 'Elite Athletic YAC Target'},
     {'id': 'te-kmet', 'name': 'Cole Kmet', 'position': 'TE', 'team': 'CHI', 'adp': 112.0, 'tier': 4, 'projected_season': 155.0, 'projected_week': 9.7, 'xfp': 9.5, 'route_participation': 0.65, 'high_value_touches': 2.8, 'red_zone_share': 0.2, 'target_share': 0.13, 'proe': 0.04, 'injury_status': 'ACTIVE', 'espn_ownership': 62.0, 'espn_proj': 9.2, 'bye_week': 7, 'opponent': 'MIN', 'implied_team_pts': 23.5, 'spread': 2.5, 'wind_mph': 8, 'is_dome': False, 'opp_rank_vs_pos': 18, 'archetype': 'Red Zone Possession Veteran'},
-    {'id': 'rb-jeanty', 'name': 'Ashton Jeanty', 'position': 'RB', 'team': 'LV', 'adp': 24.0, 'tier': 2, 'projected_season': 275.0, 'projected_week': 17.2, 'xfp': 16.8, 'route_participation': 0.64, 'high_value_touches': 5.2, 'red_zone_share': 0.42, 'target_share': 0.15, 'proe': -0.02, 'injury_status': 'ACTIVE', 'espn_ownership': 98.0, 'espn_proj': 16.5, 'bye_week': 10, 'opponent': 'DEN', 'implied_team_pts': 22.0, 'spread': -1.5, 'wind_mph': 7, 'is_dome': True, 'opp_rank_vs_pos': 22, 'archetype': '2025 Generation 1st-Round Bellcow'},
+    {'id': 'rb-jeanty', 'name': 'Ashton Jeanty', 'position': 'RB', 'team': 'LV', 'adp': 24.0, 'tier': 2, 'projected_season': 275.0, 'projected_week': 17.2, 'xfp': 16.8, 'route_participation': 0.64, 'high_value_touches': 5.2, 'red_zone_share': 0.42, 'target_share': 0.15, 'proe': -0.02, 'injury_status': 'QUESTIONABLE', 'espn_ownership': 98.0, 'espn_proj': 16.5, 'bye_week': 10, 'opponent': 'DEN', 'implied_team_pts': 22.0, 'spread': -1.5, 'wind_mph': 7, 'is_dome': True, 'opp_rank_vs_pos': 22, 'archetype': '2025 Generation 1st-Round Bellcow (Monitoring Weekend Injury)'},
     {'id': 'wr-burden', 'name': 'Luther Burden III', 'position': 'WR', 'team': 'NE', 'adp': 54.0, 'tier': 3, 'projected_season': 235.0, 'projected_week': 14.7, 'xfp': 14.4, 'route_participation': 0.88, 'high_value_touches': 4.3, 'red_zone_share': 0.28, 'target_share': 0.24, 'proe': 0.01, 'injury_status': 'ACTIVE', 'espn_ownership': 91.0, 'espn_proj': 14.2, 'bye_week': 14, 'opponent': 'NYJ', 'implied_team_pts': 20.0, 'spread': 5.5, 'wind_mph': 11, 'is_dome': False, 'opp_rank_vs_pos': 23, 'archetype': 'Explosive Slot Weapon & YAC Creator'},
     {'id': 'wr-odunze', 'name': 'Rome Odunze', 'position': 'WR', 'team': 'CHI', 'adp': 62.0, 'tier': 3, 'projected_season': 228.0, 'projected_week': 14.2, 'xfp': 13.9, 'route_participation': 0.9, 'high_value_touches': 4.1, 'red_zone_share': 0.29, 'target_share': 0.22, 'proe': 0.04, 'injury_status': 'ACTIVE', 'espn_ownership': 93.0, 'espn_proj': 13.8, 'bye_week': 7, 'opponent': 'MIN', 'implied_team_pts': 23.5, 'spread': 2.5, 'wind_mph': 8, 'is_dome': False, 'opp_rank_vs_pos': 21, 'archetype': 'Year 2 Leap Candidate / Caleb Williams Alpha'},
     {'id': 'def-vikings', 'name': 'Minnesota Vikings D/ST', 'position': 'DEF', 'team': 'MIN', 'adp': 125.0, 'tier': 1, 'projected_season': 145.0, 'projected_week': 9.2, 'xfp': 9.4, 'route_participation': 0.0, 'high_value_touches': 0.0, 'red_zone_share': 0.0, 'target_share': 0.0, 'proe': 0.0, 'injury_status': 'ACTIVE', 'espn_ownership': 92.0, 'espn_proj': 8.5, 'bye_week': 6, 'opponent': 'CHI', 'implied_team_pts': 24.5, 'spread': -2.5, 'wind_mph': 0, 'is_dome': True, 'opp_rank_vs_pos': 31, 'archetype': 'Flores Blitz / Sack & Turnover Anchor'},
@@ -217,19 +217,26 @@ class NFLStatsService:
         if pos == "RB":
             if team == "PHI":  # Jalen Hurts Brotherly Shove / Tush Push penalty
                 qb_vulture_penalty = 0.90
-            elif team in ["BAL", "BUF"]:  # Lamar / Allen rushing QB TD vulture
-                qb_vulture_penalty = 0.94
-
         # Full-PPR Target Volume Advantage (Receptions are worth 1.0 point each)
         target_share = player.get("target_share", 0.0)
         ppr_target_factor = 1.0
         if pos == "RB":
             if target_share >= 0.16:
-                ppr_target_factor = 1.06 # High-leverage PPR pass-catcher
+                ppr_target_factor = 1.06  # High-leverage PPR pass-catcher
             elif target_share <= 0.12:
-                ppr_target_factor = 0.95 # Low-volume receiver penalized in Full PPR
+                ppr_target_factor = 0.95  # Low-volume receiver penalized in Full PPR
 
-        final_proj = base * vegas_factor * matchup_factor * weather_penalty * spread_factor * qb_vulture_penalty * ppr_target_factor
+        # Injury Status Impact & Availability Risk Factor
+        injury_status = str(player.get("injury_status", "ACTIVE")).upper()
+        injury_factor = 1.0
+        if injury_status in ["OUT", "IR", "PUP", "SUSPENDED"]:
+            injury_factor = 0.0
+        elif injury_status in ["DOUBTFUL", "D"]:
+            injury_factor = 0.40
+        elif injury_status in ["QUESTIONABLE", "Q"]:
+            injury_factor = 0.90  # 10% volume risk & snap management discount
+
+        final_proj = base * vegas_factor * matchup_factor * weather_penalty * spread_factor * qb_vulture_penalty * ppr_target_factor * injury_factor
         return round(final_proj, 1)
 
     def get_player(self, player_id: str) -> Optional[Dict[str, Any]]:

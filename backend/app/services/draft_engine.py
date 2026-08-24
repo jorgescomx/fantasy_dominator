@@ -68,6 +68,7 @@ class DraftEngine:
             "position": player["position"],
             "team": player["team"],
             "tier": player["tier"],
+            "injury_status": player.get("injury_status", "ACTIVE"),
             "projected_season": player["projected_season"],
             "xfp": player["xfp"]
         }
@@ -452,6 +453,18 @@ class DraftEngine:
             "rating": "High-Powered" if implied >= 25.0 else "Average",
             "explanation": "Betting market consensus on offensive scoring volume. High implied totals create 15-30% more red zone visits and scoring drives."
         })
+
+        # 6. Injury & Availability Status
+        inj_status = str(player.get("injury_status", "ACTIVE")).upper()
+        if inj_status and inj_status != "ACTIVE":
+            rating_label = "Monitoring" if inj_status in ["QUESTIONABLE", "Q"] else "Availability Alert"
+            explanation = "Managing injury. Model factors a 10% volume risk and snap-management discount into expected points." if inj_status in ["QUESTIONABLE", "Q"] else "Designated Out/IR/PUP. Projecting zero starting volume until cleared."
+            metrics.insert(0, {
+                "metric": "Injury & Availability Status",
+                "value": inj_status,
+                "rating": rating_label,
+                "explanation": explanation
+            })
 
         # Roster Need Analysis for Current Team
         current_team = self.get_current_picking_team()

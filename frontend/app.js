@@ -270,6 +270,35 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
+// --- Injury Badge Helper ---
+function getInjuryBadgeHtml(status, inline = true) {
+    if (!status || status.toUpperCase() === 'ACTIVE') return '';
+    const st = status.toUpperCase();
+    let badgeClass = 'injury-q';
+    let text = st;
+    if (['QUESTIONABLE', 'Q'].includes(st)) {
+        badgeClass = 'injury-q';
+        text = 'Q';
+    } else if (['DOUBTFUL', 'D'].includes(st)) {
+        badgeClass = 'injury-d';
+        text = 'D';
+    } else if (['OUT', 'O'].includes(st)) {
+        badgeClass = 'injury-out';
+        text = 'OUT';
+    } else if (st === 'IR') {
+        badgeClass = 'injury-ir';
+        text = 'IR';
+    } else if (st === 'PUP') {
+        badgeClass = 'injury-pup';
+        text = 'PUP';
+    } else {
+        badgeClass = 'injury-out';
+        text = st;
+    }
+    const cls = inline ? `injury-inline-badge ${badgeClass}` : `injury-badge ${badgeClass}`;
+    return `<span class="${cls}" title="Injury Status: ${st}">${text}</span>`;
+}
+
 // --- Player Rating Explanation Modal ---
 let currentModalPlayerId = null;
 
@@ -316,6 +345,26 @@ window.showPlayerExplanation = async function(playerId) {
         const tierBadge = document.getElementById('modal-tier-badge');
         tierBadge.textContent = `Tier ${p.tier}`;
         tierBadge.className = `tier-badge tier-${Math.min(p.tier, 3)}`;
+
+        // Injury status badge in modal
+        const injuryBadge = document.getElementById('modal-injury-badge');
+        if (injuryBadge) {
+            const inj = (p.injury_status && p.injury_status.toUpperCase() !== 'ACTIVE') ? p.injury_status.toUpperCase() : '';
+            if (inj) {
+                injuryBadge.classList.remove('hidden', 'injury-q', 'injury-d', 'injury-out', 'injury-ir', 'injury-pup');
+                let badgeClass = 'injury-q';
+                let text = inj;
+                if (['QUESTIONABLE', 'Q'].includes(inj)) { badgeClass = 'injury-q'; text = 'QUESTIONABLE'; }
+                else if (['DOUBTFUL', 'D'].includes(inj)) { badgeClass = 'injury-d'; text = 'DOUBTFUL'; }
+                else if (inj === 'IR') { badgeClass = 'injury-ir'; text = 'INJURED RESERVE (IR)'; }
+                else if (inj === 'PUP') { badgeClass = 'injury-pup'; text = 'PUP LIST'; }
+                else { badgeClass = 'injury-out'; text = 'OUT'; }
+                injuryBadge.classList.add(badgeClass);
+                injuryBadge.textContent = text;
+            } else {
+                injuryBadge.classList.add('hidden');
+            }
+        }
 
         document.getElementById('modal-player-name').textContent = p.name;
         document.getElementById('modal-player-archetype').textContent = p.archetype || 'Key Starter';
@@ -670,12 +719,13 @@ function renderVORPBoard(board) {
 
         const needClass = p.need_badge_class || 'need-med';
         const needBadgeHtml = `<span class="need-badge ${needClass}">${p.need_badge || 'ACTIVE FIT'}</span>`;
+        const injuryBadgeHtml = getInjuryBadgeHtml(p.injury_status);
 
         tr.innerHTML = `
             <td>#${idx + 1}</td>
             <td>
                 <div class="player-name-cell">
-                    <strong>${p.name}</strong>
+                    <strong>${p.name}</strong>${injuryBadgeHtml}
                     <span class="click-hint">🔍 Click for rating breakdown</span>
                 </div>
                 <div style="font-size: 0.7rem; color: var(--text-muted);">${p.archetype || ''}</div>
@@ -817,11 +867,12 @@ async function loadLineupOptimization() {
             const weatherWind = p.wind_mph >= 15 
                 ? `<span style="color: var(--accent-rose);">💨 ${p.wind_mph}mph</span>` 
                 : `${p.is_dome ? '🏟️ Dome' : `🌤️ ${p.wind_mph}mph`}`;
+            const injuryBadgeHtml = getInjuryBadgeHtml(p.injury_status);
 
             div.innerHTML = `
                 <div class="slot-tag">${p.assigned_slot}</div>
                 <div>
-                    <div class="player-info-title">${p.name}</div>
+                    <div class="player-info-title">${p.name} ${injuryBadgeHtml}</div>
                     <div class="player-info-sub">${p.position} • ${p.team} vs ${p.opponent || 'TBD'}</div>
                 </div>
                 <div class="context-tag">
@@ -843,8 +894,9 @@ async function loadLineupOptimization() {
         data.bench.forEach(p => {
             const div = document.createElement('div');
             div.className = 'bench-card';
+            const injuryBadgeHtml = getInjuryBadgeHtml(p.injury_status);
             div.innerHTML = `
-                <span><strong>${p.position}</strong> ${p.name} <small style="color:var(--text-muted);">(${p.team})</small></span>
+                <span><strong>${p.position}</strong> ${p.name} ${injuryBadgeHtml} <small style="color:var(--text-muted);">(${p.team})</small></span>
                 <span style="color: var(--text-secondary);">${p.score} pts</span>
             `;
             benchGrid.appendChild(div);
@@ -931,11 +983,12 @@ function renderBreakoutFeed(targets) {
 
         const signalsHtml = p.breakout_signals.map(s => `<div class="signal-bullet">⚡ ${s}</div>`).join('');
         const deltaSign = p.arbitrage_delta >= 0 ? `+${p.arbitrage_delta}` : `${p.arbitrage_delta}`;
+        const injuryBadgeHtml = getInjuryBadgeHtml(p.injury_status);
 
         div.innerHTML = `
             <div class="breakout-top">
                 <div>
-                    <h4 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700;">${p.name}</h4>
+                    <h4 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700;">${p.name} ${injuryBadgeHtml}</h4>
                     <span style="font-size: 0.75rem; color: var(--text-muted);">${p.position} • ${p.team} | ${p.espn_ownership}% Roster %</span>
                 </div>
                 <div class="signal-score-badge">
