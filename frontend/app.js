@@ -377,6 +377,39 @@ window.showPlayerExplanation = async function(playerId) {
         document.getElementById('modal-xfp-val').textContent = p.xfp;
         document.getElementById('modal-season-pts').textContent = p.projected_season;
 
+        // Dedicated Injury Intelligence & Availability Card
+        const injuryCard = document.getElementById('modal-injury-card');
+        if (injuryCard) {
+            if (data.injury_info) {
+                injuryCard.classList.remove('hidden', 'injury-severe');
+                const info = data.injury_info;
+                const statusPill = document.getElementById('modal-injury-status-pill');
+                if (statusPill) {
+                    statusPill.className = 'injury-badge';
+                    let stClass = 'injury-q';
+                    if (['QUESTIONABLE', 'Q'].includes(info.status)) stClass = 'injury-q';
+                    else if (['DOUBTFUL', 'D'].includes(info.status)) stClass = 'injury-d';
+                    else if (info.status === 'IR') stClass = 'injury-ir';
+                    else if (info.status === 'PUP') stClass = 'injury-pup';
+                    else stClass = 'injury-out';
+                    
+                    statusPill.classList.add(stClass);
+                    statusPill.textContent = info.status;
+                }
+
+                if (['OUT', 'IR', 'PUP', 'DOUBTFUL'].includes(info.status)) {
+                    injuryCard.classList.add('injury-severe');
+                }
+
+                document.getElementById('modal-injury-type').textContent = info.type || 'Injury Maintenance';
+                document.getElementById('modal-injury-timeline').textContent = info.time_away || 'Day-to-day';
+                document.getElementById('modal-injury-notes').textContent = info.notes || '';
+                document.getElementById('modal-injury-impact').textContent = info.impact_summary || '';
+            } else {
+                injuryCard.classList.add('hidden');
+            }
+        }
+
         // Scouting Takeaway
         document.getElementById('modal-scouting-text').textContent = data.scouting_takeaway;
 
@@ -725,10 +758,15 @@ function renderVORPBoard(board) {
             <td>#${idx + 1}</td>
             <td>
                 <div class="player-name-cell">
-                    <strong>${p.name}</strong>${injuryBadgeHtml}
-                    <span class="click-hint">🔍 Click for rating breakdown</span>
+                    <div class="player-name-row">
+                        <strong class="player-name-text">${p.name}</strong>
+                        ${injuryBadgeHtml}
+                    </div>
+                    <div class="player-sub-row">
+                        <span>${p.archetype || ''}</span>
+                        <span class="click-hint">🔍 Breakdown</span>
+                    </div>
                 </div>
-                <div style="font-size: 0.7rem; color: var(--text-muted);">${p.archetype || ''}</div>
             </td>
             <td><span class="badge" style="background: rgba(255,255,255,0.06);">${p.position}</span> <span style="color: var(--text-muted);">${p.team}</span></td>
             <td><span class="tier-badge ${tierClass}">Tier ${p.tier}</span></td>

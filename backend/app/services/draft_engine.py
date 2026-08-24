@@ -454,11 +454,64 @@ class DraftEngine:
             "explanation": "Betting market consensus on offensive scoring volume. High implied totals create 15-30% more red zone visits and scoring drives."
         })
 
-        # 6. Injury & Availability Status
+        # 6. Injury Intelligence & Availability Analysis
+        injury_info = None
         inj_status = str(player.get("injury_status", "ACTIVE")).upper()
         if inj_status and inj_status != "ACTIVE":
+            archetype = player.get("archetype", "")
+            inj_type = player.get("injury_type")
+            if not inj_type:
+                if "Ankle" in archetype:
+                    inj_type = "Ankle Sprain"
+                elif "Knee" in archetype:
+                    inj_type = "Knee Surgery Rehab / Recovery"
+                elif "Calf" in archetype:
+                    inj_type = "Calf / Achilles Maintenance"
+                elif "Hamstring" in archetype:
+                    inj_type = "Hamstring Strain"
+                elif "Weekend" in archetype:
+                    inj_type = "Weekend Scrimmage Tweak"
+                elif inj_status in ["QUESTIONABLE", "Q"]:
+                    inj_type = "Soft Tissue / Preseason Maintenance"
+                elif inj_status == "PUP":
+                    inj_type = "Reserve/PUP Physical Recovery"
+                else:
+                    inj_type = "Undisclosed Injury"
+
+            time_away = player.get("injury_timeline")
+            if not time_away:
+                if inj_status in ["QUESTIONABLE", "Q"]:
+                    time_away = "Day-to-day (Tracking for Week 1)"
+                elif inj_status in ["DOUBTFUL", "D"]:
+                    time_away = "1-2 Weeks (Doubtful for upcoming game)"
+                elif inj_status in ["IR", "PUP"]:
+                    time_away = "Minimum 4 Weeks on reserve list"
+                elif inj_status == "OUT":
+                    time_away = "2-4 Weeks"
+                else:
+                    time_away = "Monitoring Daily"
+
+            notes = player.get("injury_notes")
+            if not notes:
+                if inj_status in ["QUESTIONABLE", "Q"]:
+                    notes = f"{player['name']} is managing a {inj_type.lower()}. Currently designated Questionable with volume risk factored."
+                elif inj_status == "PUP":
+                    notes = f"{player['name']} is on the Reserve/PUP list while completing rehabilitation. Ineligible for game action until cleared."
+                else:
+                    notes = f"{player['name']} is currently ruled Out. Projections zeroed for weekly starter lineups."
+
+            impact_summary = "10% volume risk & snap management discount applied" if inj_status in ["QUESTIONABLE", "Q"] else ("60% severe volume discount" if inj_status in ["DOUBTFUL", "D"] else "Projecting 0 starting points until cleared")
+
+            injury_info = {
+                "status": inj_status,
+                "type": inj_type,
+                "time_away": time_away,
+                "notes": notes,
+                "impact_summary": impact_summary
+            }
+
             rating_label = "Monitoring" if inj_status in ["QUESTIONABLE", "Q"] else "Availability Alert"
-            explanation = "Managing injury. Model factors a 10% volume risk and snap-management discount into expected points." if inj_status in ["QUESTIONABLE", "Q"] else "Designated Out/IR/PUP. Projecting zero starting volume until cleared."
+            explanation = f"{inj_type} — {time_away}. {impact_summary}."
             metrics.insert(0, {
                 "metric": "Injury & Availability Status",
                 "value": inj_status,
@@ -491,12 +544,13 @@ class DraftEngine:
             "vorp_points": vorp_val,
             "vorp_per_week": vorp_wk,
             "roster_need": need_info,
+            "scouting_takeaway": takeaway,
             "metrics": metrics,
-            "scouting_takeaway": takeaway
+            "injury_info": injury_info
         }
 
     def refresh_available_players(self) -> None:
         """Refresh player data - called when teams/rosters are updated"""
         nfl_stats_service.refresh_players()
 
-draft_engine = DraftEngine(user_pick=8)
+draft_engine = DraftEngine(user_pick=1)
