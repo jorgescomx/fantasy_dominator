@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional
 import math
 from backend.app.services.nfl_stats_service import nfl_stats_service
 from backend.app.services.espn_service import MOCK_TEAMS
+from backend.app.services.injury_registry import get_injury_details
 
 class DraftEngine:
     def __init__(self, num_teams: int = 10, total_rounds: int = 15, user_pick: int = 1):
@@ -456,65 +457,21 @@ class DraftEngine:
 
         # 6. Injury Intelligence & Availability Analysis
         injury_info = None
-        inj_status = str(player.get("injury_status", "ACTIVE")).upper()
-        if inj_status and inj_status != "ACTIVE":
-            archetype = player.get("archetype", "")
-            inj_type = player.get("injury_type")
-            if not inj_type:
-                if "Ankle" in archetype:
-                    inj_type = "Ankle Sprain"
-                elif "Knee" in archetype:
-                    inj_type = "Knee Surgery Rehab / Recovery"
-                elif "Calf" in archetype:
-                    inj_type = "Calf / Achilles Maintenance"
-                elif "Hamstring" in archetype:
-                    inj_type = "Hamstring Strain"
-                elif "Weekend" in archetype:
-                    inj_type = "Weekend Scrimmage Tweak"
-                elif inj_status in ["QUESTIONABLE", "Q"]:
-                    inj_type = "Soft Tissue / Preseason Maintenance"
-                elif inj_status == "PUP":
-                    inj_type = "Reserve/PUP Physical Recovery"
-                else:
-                    inj_type = "Undisclosed Injury"
-
-            time_away = player.get("injury_timeline")
-            if not time_away:
-                if inj_status in ["QUESTIONABLE", "Q"]:
-                    time_away = "Day-to-day (Tracking for Week 1)"
-                elif inj_status in ["DOUBTFUL", "D"]:
-                    time_away = "1-2 Weeks (Doubtful for upcoming game)"
-                elif inj_status in ["IR", "PUP"]:
-                    time_away = "Minimum 4 Weeks on reserve list"
-                elif inj_status == "OUT":
-                    time_away = "2-4 Weeks"
-                else:
-                    time_away = "Monitoring Daily"
-
-            notes = player.get("injury_notes")
-            if not notes:
-                if inj_status in ["QUESTIONABLE", "Q"]:
-                    notes = f"{player['name']} is managing a {inj_type.lower()}. Currently designated Questionable with volume risk factored."
-                elif inj_status == "PUP":
-                    notes = f"{player['name']} is on the Reserve/PUP list while completing rehabilitation. Ineligible for game action until cleared."
-                else:
-                    notes = f"{player['name']} is currently ruled Out. Projections zeroed for weekly starter lineups."
-
-            impact_summary = "10% volume risk & snap management discount applied" if inj_status in ["QUESTIONABLE", "Q"] else ("60% severe volume discount" if inj_status in ["DOUBTFUL", "D"] else "Projecting 0 starting points until cleared")
-
+        inj_details = get_injury_details(player["name"], player.get("injury_status"), player.get("injury_body_part"), player.get("injury_notes"))
+        if inj_details:
             injury_info = {
-                "status": inj_status,
-                "type": inj_type,
-                "time_away": time_away,
-                "notes": notes,
-                "impact_summary": impact_summary
+                "status": inj_details["status"],
+                "type": inj_details["type"],
+                "time_away": inj_details["timeline"],
+                "notes": inj_details["notes"],
+                "impact_summary": inj_details["impact_summary"]
             }
 
-            rating_label = "Monitoring" if inj_status in ["QUESTIONABLE", "Q"] else "Availability Alert"
-            explanation = f"{inj_type} — {time_away}. {impact_summary}."
+            rating_label = "Monitoring" if inj_details["status"] in ["QUESTIONABLE", "Q"] else "Availability Alert"
+            explanation = f"{inj_details['type']} — {inj_details['timeline']}. {inj_details['impact_summary']}."
             metrics.insert(0, {
                 "metric": "Injury & Availability Status",
-                "value": inj_status,
+                "value": inj_details["status"],
                 "rating": rating_label,
                 "explanation": explanation
             })

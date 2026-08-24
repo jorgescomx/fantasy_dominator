@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional
 import httpx
 import logging
+from backend.app.services.injury_registry import get_injury_details, HEALTHY_STARTERS, normalize_name
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +172,34 @@ class NFLStatsService:
             logger.info(f"Loaded {len(self.players_db)} verified live NFL players from official database.")
         else:
             self.players_db = {p["id"]: dict(p) for p in INITIAL_PLAYERS}
+
+        for player in self.players_db.values():
+            self._apply_injury_intelligence(player)
+
+    def _apply_injury_intelligence(self, player: Dict[str, Any]) -> None:
+        name = player.get("name", "")
+        norm = normalize_name(name)
+        if norm in HEALTHY_STARTERS:
+            player["injury_status"] = "ACTIVE"
+            player.pop("injury_type", None)
+            player.pop("injury_timeline", None)
+            player.pop("injury_notes", None)
+            player.pop("injury_impact", None)
+            return
+
+        inj_info = get_injury_details(name, player.get("injury_status"), player.get("injury_body_part"), player.get("injury_notes"))
+        if inj_info:
+            player["injury_status"] = inj_info["status"]
+            player["injury_type"] = inj_info["type"]
+            player["injury_timeline"] = inj_info["timeline"]
+            player["injury_notes"] = inj_info["notes"]
+            player["injury_impact"] = inj_info["impact_summary"]
+        else:
+            player["injury_status"] = "ACTIVE"
+            player.pop("injury_type", None)
+            player.pop("injury_timeline", None)
+            player.pop("injury_notes", None)
+            player.pop("injury_impact", None)
 
     def get_all_players(self) -> List[Dict[str, Any]]:
         """Return full player list with contextual model calculations."""
