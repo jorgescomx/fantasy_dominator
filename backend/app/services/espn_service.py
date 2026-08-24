@@ -41,9 +41,48 @@ class ESPNService:
         all_players = nfl_stats_service.get_all_players()
         rosters: Dict[int, List[Dict[str, Any]]] = {t["id"]: [] for t in MOCK_TEAMS}
         
+        alias_map = {
+            "wr-chase": "jamarr chase",
+            "rb-gibbs": "jahmyr gibbs",
+            "wr-btj": "brian thomas jr",
+            "qb-daniels": "jayden daniels",
+            "te-mcbride": "trey mcbride",
+            "rb-bucky": "bucky irving",
+            "wr-ladd": "ladd mcconkey",
+            "def-vikings": "minnesota vikings",
+            "k-aubrey": "brandon aubrey",
+            "wr-ceedee": "ceedee lamb",
+            "rb-breece": "breece hall",
+            "te-bowers": "brock bowers",
+            "qb-allen": "josh allen",
+            "rb-cook": "james cook",
+            "wr-terry": "terry mclaurin",
+            "rb-cmc": "christian mccaffrey",
+            "wr-marv": "marvin harrison jr",
+            "rb-jt": "jonathan taylor",
+            "te-kittle": "george kittle",
+            "qb-hurts": "jalen hurts",
+            "wr-jj": "justin jefferson",
+            "rb-saquon": "saquon barkley",
+            "wr-nabers": "malik nabers",
+            "te-laporta": "sam laporta",
+            "qb-lamar": "lamar jackson",
+            "wr-tyreek": "tyreek hill",
+            "rb-achane": "devon achane",
+            "rb-henry": "derrick henry",
+            "te-kelce": "travis kelce",
+            "wr-london": "drake london",
+            "wr-amonra": "amon ra st brown",
+            "rb-kyren": "kyren williams",
+            "wr-gw": "garrett wilson",
+            "rb-bijan": "bijan robinson",
+            "wr-nico": "nico collins",
+            "rb-jacobs": "josh jacobs"
+        }
+
         # Realistically distribute top players across 10 teams
         team_assignments = {
-            1: ["wr-chase", "rb-gibbs", "wr-btj", "qb-daniels", "te-mcbride", "rb-bucky", "wr-ladd", "def-vikings", "k-aubrey"], # User's dominant team
+            1: ["wr-chase", "rb-gibbs", "wr-btj", "qb-daniels", "te-mcbride", "rb-bucky", "wr-ladd", "def-vikings", "k-aubrey"],
             2: ["wr-ceedee", "rb-breece", "te-bowers", "qb-allen", "rb-cook", "wr-terry"],
             3: ["rb-cmc", "wr-marv", "rb-jt", "te-kittle", "qb-hurts"],
             4: ["wr-jj", "rb-saquon", "wr-nabers", "te-laporta", "qb-lamar"],
@@ -56,10 +95,20 @@ class ESPNService:
         }
 
         player_map = {p["id"]: p for p in all_players}
+        name_map = {p["name"].lower().replace(".", "").replace("'", "").replace("-", " ").strip(): p for p in all_players}
+
         for team_id, p_ids in team_assignments.items():
             for pid in p_ids:
+                target_p = None
                 if pid in player_map:
-                    p_copy = dict(player_map[pid])
+                    target_p = player_map[pid]
+                elif pid in alias_map and alias_map[pid] in name_map:
+                    target_p = name_map[alias_map[pid]]
+                elif pid in name_map:
+                    target_p = name_map[pid]
+                
+                if target_p:
+                    p_copy = dict(target_p)
                     p_copy["lineup_slot"] = self._assign_default_slot(p_copy["position"], rosters[team_id])
                     rosters[team_id].append(p_copy)
         return rosters
@@ -177,24 +226,25 @@ class ESPNService:
         if self.is_connected and self.espn_league_instance:
             try:
                 for t in self.espn_league_instance.teams:
-                    if t.team_id == team_id:
+                    if getattr(t, 'team_id', None) == team_id:
                         live_roster = []
-                        for p in t.roster:
+                        for p in getattr(t, 'roster', []):
                             live_roster.append({
-                                "id": str(p.playerId),
-                                "name": p.name,
-                                "position": p.position,
-                                "team": p.proTeam,
-                                "lineup_slot": p.lineupSlot,
-                                "projected_week": p.projected_points,
-                                "espn_proj": p.projected_points,
-                                "injury_status": p.injuryStatus or "ACTIVE"
+                                "id": str(getattr(p, 'playerId', getattr(p, 'player_id', ''))),
+                                "name": getattr(p, 'name', ''),
+                                "position": getattr(p, 'position', 'FLEX'),
+                                "team": getattr(p, 'proTeam', getattr(p, 'pro_team', '')),
+                                "lineup_slot": getattr(p, 'lineupSlot', getattr(p, 'lineup_slot', 'BENCH')),
+                                "projected_week": getattr(p, 'projected_points', 0.0),
+                                "espn_proj": getattr(p, 'projected_points', 0.0),
+                                "injury_status": getattr(p, 'injuryStatus', getattr(p, 'injury_status', 'ACTIVE')) or "ACTIVE"
                             })
-                        return live_roster
+                        if live_roster:
+                            return live_roster
             except Exception as e:
                 logger.error(f"Error fetching live roster for team {team_id}: {e}")
 
-        return self._mock_rosters.get(team_id, self._mock_rosters[1])
+        return self._mock_rosters.get(team_id, self._mock_rosters.get(1, []))
 
     def get_free_agents(self) -> List[Dict[str, Any]]:
         all_players = nfl_stats_service.get_all_players()

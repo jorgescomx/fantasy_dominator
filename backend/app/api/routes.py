@@ -22,10 +22,10 @@ class DraftPickRequest(BaseModel):
     team_id: Optional[int] = None
 
 class DraftResetRequest(BaseModel):
-    user_pick: Optional[int] = 8
+    user_pick: Optional[int] = 1
 
 class LineupOptimizeRequest(BaseModel):
-    team_id: Optional[int] = 8
+    team_id: Optional[int] = 1
     mode: Optional[str] = "balanced" # "balanced", "ceiling", "floor"
 
 class SitStartCompareRequest(BaseModel):
@@ -128,8 +128,8 @@ def get_waiver_radar():
     return {"count": len(breakouts), "breakout_targets": breakouts}
 
 @router.get("/waiver/drop-candidates")
-def get_drop_candidates(team_id: Optional[int] = 8):
-    candidates = waiver_radar.evaluate_drop_candidates(team_id or 8)
+def get_drop_candidates(team_id: Optional[int] = 1):
+    candidates = waiver_radar.evaluate_drop_candidates(team_id or 1)
     return {"count": len(candidates), "drop_candidates": candidates}
 
 # --- Data Refresh Endpoints ---

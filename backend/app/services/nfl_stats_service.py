@@ -235,6 +235,14 @@ class NFLStatsService:
     def get_player(self, player_id: str) -> Optional[Dict[str, Any]]:
         p = self.players_db.get(player_id)
         if not p:
+            # Check by alias or normalized name
+            norm_id = str(player_id).lower().replace(".", "").replace("'", "").replace("-", " ").strip()
+            for cand in self.players_db.values():
+                cand_name = cand["name"].lower().replace(".", "").replace("'", "").replace("-", " ").strip()
+                if cand_name == norm_id or cand_name.endswith(norm_id) or norm_id.endswith(cand_name):
+                    p = cand
+                    break
+        if not p:
             return None
         item = dict(p)
         item["contextual_proj"] = self._calculate_contextual_points(item)

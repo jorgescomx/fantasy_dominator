@@ -1,6 +1,7 @@
 // NFL Fantasy Dominator - Frontend Client Controller
 
 const API_BASE = '/api/v1';
+const USER_TEAM_STORAGE_KEY = 'fantasy_dominator_user_team_id';
 
 let currentPosFilter = 'ALL';
 let currentSearchQuery = '';
@@ -8,6 +9,167 @@ let currentOptimizationMode = 'balanced';
 let cachedPlayers = [];
 let allRosterPlayers = [];
 let cachedDraftBoard = [];
+let leagueTeams = [];
+
+// --- User Team Preference Helpers ---
+function getSelectedTeamId() {
+    const saved = localStorage.getItem(USER_TEAM_STORAGE_KEY);
+    if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed > 0) {
+            return parsed;
+        }
+    }
+    return null;
+}
+
+function getActiveTeamObject() {
+    const activeId = getSelectedTeamId();
+    if (leagueTeams && leagueTeams.length > 0) {
+        if (activeId !== null) {
+            const found = leagueTeams.find(t => t.id === activeId);
+            if (found) return found;
+        }
+        return leagueTeams[0];
+    }
+    return null;
+}
+
+async function setSelectedTeamId(teamId, refreshData = true) {
+    const idNum = parseInt(teamId, 10);
+    if (isNaN(idNum) || idNum <= 0) return;
+    
+    localStorage.setItem(USER_TEAM_STORAGE_KEY, idNum.toString());
+    updateTeamUI(idNum);
+
+    // Sync draft engine pick with selected team
+    try {
+        await fetch(`${API_BASE}/draft/reset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_pick: idNum })
+        });
+    } catch (err) {
+        console.error('Error syncing draft user pick:', err);
+    }
+
+    if (refreshData) {
+        await loadDraftState();
+        await loadLineupOptimization();
+        await loadWaiverRadar();
+        await loadLeagueOverview();
+    }
+}
+
+function updateTeamUI(activeId) {
+    const team = (leagueTeams || []).find(t => t.id === activeId) || { id: activeId, name: `Team ${activeId}`, owner: 'Manager' };
+    const ownerStr = team.owner && team.owner !== 'Manager' ? ` (${team.owner})` : '';
+    const displayLabel = `${team.name}${ownerStr}`;
+
+    // Update Header Pill
+    const headerTeamName = document.getElementById('header-user-team-name');
+    if (headerTeamName) {
+        headerTeamName.textContent = `My Team: ${displayLabel}`;
+    }
+
+    // Update Settings Active Badge
+    const settingsBadge = document.getElementById('settings-active-team-badge');
+    if (settingsBadge) {
+        settingsBadge.textContent = `Active: #${team.id} ${team.name}`;
+    }
+
+    // Update Lineup & Waiver labels
+    const lineupTeamName = document.getElementById('lineup-user-team-name');
+    if (lineupTeamName) {
+        lineupTeamName.textContent = team.name;
+    }
+    const waiverTeamName = document.getElementById('waiver-user-team-name');
+    if (waiverTeamName) {
+        waiverTeamName.textContent = team.name;
+    }
+
+    // Update Dropdown Values without triggering onchange loop
+    const draftSelect = document.getElementById('user-team-select');
+    if (draftSelect && parseInt(draftSelect.value) !== activeId) {
+        draftSelect.value = activeId;
+    }
+
+    const settingsSelect = document.getElementById('settings-user-team-select');
+    if (settingsSelect && parseInt(settingsSelect.value) !== activeId) {
+        settingsSelect.value = activeId;
+    }
+
+    // Update Details Box in Settings
+    renderSelectedTeamDetails(team);
+}
+
+function renderSelectedTeamDetails(team) {
+    const detailsBox = document.getElementById('selected-team-details');
+    if (!detailsBox) return;
+
+    if (!team) {
+        detailsBox.innerHTML = `<div style="font-size: 0.85rem; color: var(--text-muted);">No team selected yet.</div>`;
+        return;
+    }
+
+    const standingText = team.standing ? `#${team.standing}` : 'N/A';
+    const recordText = (team.wins !== undefined && team.losses !== undefined) ? `${team.wins}-${team.losses}` : '0-0';
+    const pointsText = team.points_for ? `${team.points_for} pts` : '0.0 pts';
+
+    detailsBox.innerHTML = `
+        <div class="selected-team-info">
+            <div class="selected-team-info-name">⚡ #${team.id} ${team.name}</div>
+            <div class="selected-team-info-meta">Owner: <strong>${team.owner || 'Manager'}</strong> • Team ID: #${team.id}</div>
+        </div>
+        <div class="selected-team-stats">
+            <div class="selected-team-stat-item">
+                <span class="selected-team-stat-val">${standingText}</span>
+                <span class="selected-team-stat-lbl">Standing</span>
+            </div>
+            <div class="selected-team-stat-item">
+                <span class="selected-team-stat-val">${recordText}</span>
+                <span class="selected-team-stat-lbl">Record</span>
+            </div>
+            <div class="selected-team-stat-item">
+                <span class="selected-team-stat-val">${pointsText}</span>
+                <span class="selected-team-stat-lbl">Total Pts</span>
+            </div>
+        </div>
+    `;
+}
+
+function populateAllTeamSelectors(teams) {
+    if (!teams || teams.length === 0) return;
+    leagueTeams = teams;
+
+    let activeId = getSelectedTeamId();
+    if (activeId === null || !teams.some(t => t.id === activeId)) {
+        activeId = teams[0].id;
+        localStorage.setItem(USER_TEAM_STORAGE_KEY, activeId.toString());
+    }
+
+    const selectElements = [
+        document.getElementById('user-team-select'),
+        document.getElementById('settings-user-team-select')
+    ];
+
+    selectElements.forEach(select => {
+        if (!select) return;
+        select.innerHTML = '';
+        teams.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            const ownerText = t.owner && t.owner !== 'Manager' ? ` (${t.owner})` : '';
+            opt.textContent = `#${t.id} ${t.name}${ownerText}`;
+            if (t.id === activeId) {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        });
+    });
+
+    updateTeamUI(activeId);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
@@ -199,10 +361,10 @@ window.showPlayerExplanation = async function(playerId) {
 
 // --- Refresh Core Data ---
 async function refreshAllData() {
+    await loadLeagueOverview();
     await loadDraftState();
     await loadLineupOptimization();
     await loadWaiverRadar();
-    await loadLeagueOverview();
 }
 
 // --- TAB 1: LIVE DRAFT ASSISTANT ---
@@ -271,6 +433,17 @@ function initDraftAssistant() {
             console.error(e);
         }
     });
+
+    // Draft Team Dropdown Listener
+    const teamSelect = document.getElementById('user-team-select');
+    if (teamSelect) {
+        teamSelect.addEventListener('change', async (e) => {
+            const newPickSlot = parseInt(e.target.value, 10);
+            await setSelectedTeamId(newPickSlot, true);
+            const team = getActiveTeamObject();
+            showNotification(`✓ Active team set to: ${team ? team.name : 'Team ' + newPickSlot}`, 'success');
+        });
+    }
 
     // Live ESPN Draft Sync Button
     const syncEspnBtn = document.getElementById('btn-sync-espn-draft');
@@ -358,8 +531,7 @@ function initDraftAssistant() {
                     if (autoSyncInterval) clearInterval(autoSyncInterval);
                 }
 
-                const teamSelect = document.getElementById('user-team-select');
-                const userPick = teamSelect ? parseInt(teamSelect.value) || 8 : 8;
+                const userPick = getSelectedTeamId() || 1;
 
                 const res = await fetch(`${API_BASE}/draft/reset`, {
                     method: 'POST',
@@ -386,33 +558,9 @@ async function loadDraftState() {
         const res = await fetch(`${API_BASE}/draft/state`);
         const state = await res.json();
 
-        // Populate Team Selector with Real League Teams
-        const teamSelect = document.getElementById('user-team-select');
-        if (teamSelect && state.league_teams && state.league_teams.length > 0) {
-            const currentVal = parseInt(teamSelect.value) || state.user_pick;
-            if (teamSelect.options.length !== state.league_teams.length) {
-                teamSelect.innerHTML = '';
-                state.league_teams.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t.id;
-                    const ownerText = t.owner && t.owner !== 'Manager' ? ` (${t.owner})` : '';
-                    opt.textContent = `#${t.id} ${t.name}${ownerText}`;
-                    if (t.id === currentVal || (t.owner && t.owner.toLowerCase().includes('jorge'))) {
-                        opt.selected = true;
-                    }
-                    teamSelect.appendChild(opt);
-                });
-
-                teamSelect.onchange = async (e) => {
-                    const newPickSlot = parseInt(e.target.value);
-                    await fetch(`${API_BASE}/draft/reset`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ user_pick: newPickSlot })
-                    });
-                    await loadDraftState();
-                };
-            }
+        // Populate and synchronize Team Selectors with Real League Teams
+        if (state.league_teams && state.league_teams.length > 0) {
+            populateAllTeamSelectors(state.league_teams);
         }
 
         // Update Telemetry
@@ -648,10 +796,11 @@ function initLineupOptimizer() {
 
 async function loadLineupOptimization() {
     try {
+        const userTeamId = getSelectedTeamId() || 1;
         const res = await fetch(`${API_BASE}/lineup/optimize`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ team_id: 8, mode: currentOptimizationMode })
+            body: JSON.stringify({ team_id: userTeamId, mode: currentOptimizationMode })
         });
         const data = await res.json();
 
@@ -756,8 +905,9 @@ async function loadWaiverRadar() {
         const dataRadar = await resRadar.json();
         renderBreakoutFeed(dataRadar.breakout_targets);
 
-        // Drop candidates
-        const resDrop = await fetch(`${API_BASE}/waiver/drop-candidates?team_id=8`);
+        // Drop candidates for active user team
+        const userTeamId = getSelectedTeamId() || 1;
+        const resDrop = await fetch(`${API_BASE}/waiver/drop-candidates?team_id=${userTeamId}`);
         const dataDrop = await resDrop.json();
         renderDropCandidates(dataDrop.drop_candidates);
 
@@ -827,8 +977,54 @@ function renderDropCandidates(candidates) {
     });
 }
 
-// --- TAB 4: ESPN LEAGUE SYNC ---
+// --- TAB 4: ESPN LEAGUE SYNC & SETTINGS ---
 function initESPNSync() {
+    // Header Active Team Pill Click -> Go to Settings
+    const teamPill = document.getElementById('active-user-team-pill');
+    if (teamPill) {
+        teamPill.addEventListener('click', () => {
+            const espnTabBtn = document.querySelector('.nav-tab[data-tab="espn-tab"]');
+            if (espnTabBtn) espnTabBtn.click();
+            const settingsSelect = document.getElementById('settings-user-team-select');
+            if (settingsSelect) {
+                settingsSelect.focus();
+                settingsSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    }
+
+    // Settings Team Picker Preview on Change
+    const settingsSelect = document.getElementById('settings-user-team-select');
+    if (settingsSelect) {
+        settingsSelect.addEventListener('change', (e) => {
+            const previewId = parseInt(e.target.value, 10);
+            const previewTeam = (leagueTeams || []).find(t => t.id === previewId);
+            renderSelectedTeamDetails(previewTeam);
+        });
+    }
+
+    // Save as My Team Button
+    const saveTeamBtn = document.getElementById('btn-save-user-team');
+    if (saveTeamBtn) {
+        saveTeamBtn.addEventListener('click', async () => {
+            const sel = document.getElementById('settings-user-team-select');
+            if (sel) {
+                const newId = parseInt(sel.value, 10);
+                saveTeamBtn.disabled = true;
+                saveTeamBtn.textContent = '⏳ Saving...';
+                try {
+                    await setSelectedTeamId(newId, true);
+                    const team = getActiveTeamObject();
+                    showNotification(`✓ Saved "${team ? team.name : 'Team ' + newId}" as your active team!`, 'success');
+                } finally {
+                    saveTeamBtn.disabled = false;
+                    saveTeamBtn.innerHTML = '<span class="icon">💾</span> Set as My Team';
+                }
+            }
+        });
+    }
+
+    // ESPN Connect Form
     const form = document.getElementById('espn-form');
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -857,6 +1053,7 @@ function initESPNSync() {
                 if (statusBadge) {
                     statusBadge.textContent = `Connected: ${data.league_name || 'ESPN'}`;
                 }
+                showNotification(`✓ Connected to ESPN League: ${data.league_name || 'ESPN'}`, 'success');
             } else {
                 alert(data.message);
             }
@@ -877,6 +1074,7 @@ function initESPNSync() {
         });
         await loadLeagueOverview();
         await refreshAllData();
+        showNotification('Switched to 10-Team Demo Mode', 'info');
     });
 }
 
@@ -884,6 +1082,11 @@ async function loadLeagueOverview() {
     try {
         const res = await fetch(`${API_BASE}/league/overview`);
         const data = await res.json();
+
+        // Populate league teams in selector
+        if (data.teams && data.teams.length > 0) {
+            populateAllTeamSelectors(data.teams);
+        }
 
         const syncPill = document.getElementById('league-sync-pill');
         const syncText = document.getElementById('sync-status-text');
@@ -910,13 +1113,15 @@ async function loadLeagueOverview() {
         const standingsContainer = document.getElementById('league-standings-table');
         standingsContainer.innerHTML = '';
 
+        const userTeamId = getSelectedTeamId() || 1;
+
         data.teams.forEach(t => {
-            const isUser = t.id === 8 || t.name === 'Good2Dream';
+            const isUser = t.id === userTeamId;
             const div = document.createElement('div');
             div.className = isUser ? 'team-row user-highlight-row' : 'team-row';
             if (isUser) {
-                div.style.background = 'rgba(6, 182, 212, 0.12)';
-                div.style.border = '1px solid rgba(6, 182, 212, 0.4)';
+                div.style.background = 'rgba(0, 242, 254, 0.12)';
+                div.style.border = '1px solid rgba(0, 242, 254, 0.4)';
                 div.style.borderRadius = '8px';
                 div.style.padding = '8px 12px';
             }
@@ -937,3 +1142,4 @@ async function loadLeagueOverview() {
         console.error('Error loading league overview:', e);
     }
 }
+

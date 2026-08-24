@@ -53,7 +53,8 @@ def test_lineup_optimizer():
     print(f"  [PASS] PuLP Linear Solver generated optimal starting lineup with {result['total_projected']} projected points across {result['starters_count']} starters.")
 
     # Sit/Start Comparison
-    cmp = lineup_optimizer.compare_sit_start("wr-chase", "wr-btj")
+    all_p = nfl_stats_service.get_all_players()
+    cmp = lineup_optimizer.compare_sit_start(all_p[0]["id"], all_p[1]["id"])
     assert cmp["winner_name"] is not None
     print(f"  [PASS] Sit/Start Arena: {cmp['recommendation']}")
 

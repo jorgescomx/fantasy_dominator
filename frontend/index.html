@@ -31,11 +31,14 @@
                     <span class="icon">📡</span> Waiver Arbitrage Radar
                 </button>
                 <button class="nav-tab" data-tab="espn-tab">
-                    <span class="icon">🏈</span> ESPN League Sync
+                    <span class="icon">⚙️</span> ESPN Sync & Settings
                 </button>
             </nav>
 
             <div class="header-status">
+                <span id="active-user-team-pill" class="user-team-pill" title="Your Active Team (Click to change in Settings)">
+                    <span class="team-dot"></span> <span id="header-user-team-name">My Team: Loading...</span>
+                </span>
                 <span id="league-sync-pill" class="sync-pill sync-demo">
                     <span class="indicator"></span> <span id="sync-status-text">Demo 10-Team League</span>
                 </span>
@@ -187,7 +190,7 @@
                 <!-- Optimal Starters -->
                 <div class="lineup-starters-panel">
                     <div class="panel-header">
-                        <h2>Optimal Starting Lineup (10-Team PPR)</h2>
+                        <h2>Optimal Starting Lineup (<span id="lineup-user-team-name" style="color: var(--accent-cyan);">My Team</span>)</h2>
                         <span class="badge badge-solver">PuLP Linear Solver</span>
                     </div>
                     <div id="starters-list" class="starters-grid">
@@ -261,7 +264,7 @@
                 <!-- Drop Candidate Delta -->
                 <div class="drop-candidates-panel">
                     <div class="glass-card drop-card">
-                        <h3><span class="icon">📉</span> Drop Candidate Evaluator</h3>
+                        <h3><span class="icon">📉</span> Drop Candidate Evaluator (<span id="waiver-user-team-name" style="color: var(--accent-cyan);">My Team</span>)</h3>
                         <p class="card-desc">Bench players with declining usage & sub-baseline projections</p>
                         <div id="drop-candidates-list" class="drop-list">
                             <!-- Populated dynamically -->
@@ -274,6 +277,34 @@
         <!-- ================= TAB 4: ESPN LEAGUE SYNC & SETTINGS ================= -->
         <section id="espn-tab" class="tab-content">
             <div class="settings-layout">
+                <!-- User Team Selection Card -->
+                <div class="glass-card user-team-settings-card">
+                    <div class="card-header-flex">
+                        <h2><span class="icon">👤</span> My Fantasy Team & Preferences</h2>
+                        <span id="settings-active-team-badge" class="badge badge-active-team">Active: Loading...</span>
+                    </div>
+                    <p class="card-desc">Explicitly select your team in this league. This setting is saved permanently to ensure the Live Draft, Lineup Optimizer, and Waiver Radar always target your roster.</p>
+
+                    <div class="team-picker-container">
+                        <div class="form-group">
+                            <label for="settings-user-team-select">Choose Your Team:</label>
+                            <div class="team-picker-action-row">
+                                <select id="settings-user-team-select" class="select-input custom-team-select">
+                                    <!-- Populated dynamically with all league teams -->
+                                </select>
+                                <button type="button" id="btn-save-user-team" class="btn btn-primary">
+                                    <span class="icon">💾</span> Set as My Team
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="selected-team-details" class="selected-team-details-box">
+                        <!-- Populated with details of currently selected team -->
+                    </div>
+                </div>
+
+                <!-- ESPN Connection Card -->
                 <div class="glass-card espn-connect-card">
                     <div class="card-header-flex">
                         <h2><span class="icon">🏈</span> ESPN League Connection</h2>
