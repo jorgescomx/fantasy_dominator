@@ -642,6 +642,46 @@ body.dark-theme {
     font-weight: 600;
 }
 
+/* Bye Week Badges */
+.bye-badge {
+    display: inline-block;
+    padding: 0.2rem 0.45rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.bye-badge-sm {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    margin-left: 0.35rem;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+}
+
+.bye-clash-highlight {
+    background: rgba(244, 63, 94, 0.2) !important;
+    color: #fb7185 !important;
+    border-color: rgba(244, 63, 94, 0.5) !important;
+    box-shadow: 0 0 10px rgba(244, 63, 94, 0.3);
+    font-weight: 800;
+}
+
+.bye-cluster-highlight {
+    background: rgba(245, 158, 11, 0.18) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+    font-weight: 800;
+}
+
 /* Tables */
 .table-container {
     overflow-x: auto;

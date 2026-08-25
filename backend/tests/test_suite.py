@@ -98,11 +98,47 @@ def test_injury_intelligence():
     
     print("  [PASS] Curated & dynamic injury models return tailored medical notes and calibrated discount factors.")
 
+def test_bye_week_collision_protection():
+    print("Testing Smart Bye Week Collision & Clustering Protection...")
+    from backend.app.services.nfl_byes import evaluate_bye_conflicts, get_team_bye_week
+    
+    # 1. Single-starter clash (QB)
+    mock_roster = [
+        {"id": "qb-hurts", "name": "Jalen Hurts", "position": "QB", "team": "PHI", "bye_week": 5}
+    ]
+    # Candidate QB with same bye (e.g. Goff on DET - Wk 5)
+    cand_qb_clash = {"id": "qb-goff", "name": "Jared Goff", "position": "QB", "team": "DET", "bye_week": 5}
+    clash_eval = evaluate_bye_conflicts(mock_roster, cand_qb_clash)
+    assert clash_eval["has_conflict"] is True
+    assert clash_eval["conflict_type"] == "CLASH"
+    assert clash_eval["multiplier"] < 0.50
+    assert "CRITICAL BYE CLASH" in clash_eval["warning"]
+    
+    # Candidate QB with different bye (e.g. Mahomes on KC - Wk 6)
+    cand_qb_clean = {"id": "qb-mahomes", "name": "Patrick Mahomes", "position": "QB", "team": "KC", "bye_week": 6}
+    clean_eval = evaluate_bye_conflicts(mock_roster, cand_qb_clean)
+    assert clean_eval["has_conflict"] is False
+    assert clean_eval["multiplier"] == 1.0
+
+    # 2. Multi-starter clustering (RB)
+    rb_roster = [
+        {"id": "rb-1", "name": "Kyren Williams", "position": "RB", "team": "LAR", "bye_week": 6},
+        {"id": "rb-2", "name": "De'Von Achane", "position": "RB", "team": "MIA", "bye_week": 6}
+    ]
+    cand_rb_cluster = {"id": "rb-3", "name": "Isiah Pacheco", "position": "RB", "team": "KC", "bye_week": 6}
+    rb_cluster_eval = evaluate_bye_conflicts(rb_roster, cand_rb_cluster)
+    assert rb_cluster_eval["has_conflict"] is True
+    assert rb_cluster_eval["conflict_type"] == "CLUSTER"
+    assert rb_cluster_eval["multiplier"] < 1.0
+    
+    print("  [PASS] Single-starter bye clashes (QB/TE) penalized heavily and multi-starter cluster shields active.")
+
 if __name__ == "__main__":
     test_nfl_stats()
     test_draft_engine()
     test_lineup_optimizer()
     test_waiver_radar()
     test_injury_intelligence()
+    test_bye_week_collision_protection()
     print("\n>>> ALL TESTS PASSED SUCCESSFULLY! <<<")
 

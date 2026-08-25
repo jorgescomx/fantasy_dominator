@@ -3,6 +3,7 @@ import math
 from backend.app.services.nfl_stats_service import nfl_stats_service
 from backend.app.services.espn_service import MOCK_TEAMS
 from backend.app.services.injury_registry import get_injury_details
+from backend.app.services.nfl_byes import evaluate_bye_conflicts, get_team_bye_week
 
 class DraftEngine:
     def __init__(self, num_teams: int = 10, total_rounds: int = 15, user_pick: int = 1):
@@ -183,13 +184,35 @@ class DraftEngine:
 
             # Roster Need & Balance Multiplier
             need_info = self._calculate_roster_need(roster_held, pos, current_round)
-            item["need_multiplier"] = need_info["multiplier"]
-            item["need_badge"] = need_info["badge"]
-            item["need_badge_class"] = need_info["badge_class"]
-            item["need_rationale"] = need_info["rationale"]
             
-            # Need-Adjusted Score: Balances raw VORP with structural roster requirements
-            item["need_adjusted_score"] = round((item["vorp"] + 50.0) * need_info["multiplier"], 1)
+            # Smart Bye Week Conflict Protection
+            bye_info = evaluate_bye_conflicts(roster_held, item)
+            item["bye_week"] = bye_info["bye_week"] or get_team_bye_week(item.get("team"))
+            item["has_bye_conflict"] = bye_info["has_conflict"]
+            item["bye_conflict_type"] = bye_info["conflict_type"]
+            item["bye_conflict_warning"] = bye_info["warning"]
+            item["bye_badge"] = bye_info["badge"]
+            item["bye_badge_class"] = bye_info["badge_class"]
+
+            # Combine positional need with bye collision factor
+            combined_multiplier = round(need_info["multiplier"] * bye_info["multiplier"], 2)
+            item["need_multiplier"] = combined_multiplier
+
+            if bye_info["conflict_type"] == "CLASH":
+                item["need_badge"] = bye_info["badge"]
+                item["need_badge_class"] = "need-cap"
+                item["need_rationale"] = bye_info["warning"]
+            elif bye_info["conflict_type"] == "CLUSTER":
+                item["need_badge"] = bye_info["badge"]
+                item["need_badge_class"] = "need-low"
+                item["need_rationale"] = f"{need_info['rationale']} | {bye_info['warning']}"
+            else:
+                item["need_badge"] = need_info["badge"]
+                item["need_badge_class"] = need_info["badge_class"]
+                item["need_rationale"] = need_info["rationale"]
+            
+            # Need-Adjusted Score: Balances raw VORP with structural roster requirements & Bye protection
+            item["need_adjusted_score"] = round((item["vorp"] + 50.0) * combined_multiplier, 1)
 
             annotated_board.append(item)
 
@@ -476,10 +499,31 @@ class DraftEngine:
                 "explanation": explanation
             })
 
-        # Roster Need Analysis for Current Team
+        # 7. Bye Week & Roster Schedule Compatibility
         current_team = self.get_current_picking_team()
         current_round = ((self.current_pick_number - 1) // self.num_teams) + 1
         roster_held = self.team_rosters.get(current_team, [])
+        bye_eval = evaluate_bye_conflicts(roster_held, player)
+        cand_bye = bye_eval["bye_week"] or player.get("bye_week") or get_team_bye_week(player.get("team"))
+        
+        if bye_eval["conflict_type"] == "CLASH":
+            bye_rating = "Critical Clash"
+            bye_exp = bye_eval["warning"]
+        elif bye_eval["conflict_type"] == "CLUSTER":
+            bye_rating = "Cluster Alert"
+            bye_exp = bye_eval["warning"]
+        else:
+            bye_rating = "No Conflict"
+            bye_exp = f"NFL Bye Week {cand_bye} creates zero scheduling collisions with your drafted roster."
+
+        metrics.append({
+            "metric": "NFL Bye Week Compatibility",
+            "value": f"Week {cand_bye}" if cand_bye else "N/A",
+            "rating": bye_rating,
+            "explanation": bye_exp
+        })
+
+        # Roster Need Analysis for Current Team
         need_info = self._calculate_roster_need(roster_held, pos, current_round)
 
         # Generate contextual scouting takeaway

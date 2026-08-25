@@ -783,6 +783,9 @@ function renderVORPBoard(board) {
             } else if (currentSortColumn === 'cliff') {
                 valA = a.tier_cliff_warning ? 1 : 0;
                 valB = b.tier_cliff_warning ? 1 : 0;
+            } else if (currentSortColumn === 'bye_week') {
+                valA = a.bye_week || 99;
+                valB = b.bye_week || 99;
             } else if (currentSortColumn === 'rank') {
                 valA = a.need_adjusted_score || a.vorp;
                 valB = b.need_adjusted_score || b.vorp;
@@ -795,7 +798,7 @@ function renderVORPBoard(board) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">No players found matching your filter/search.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2rem;">No players found matching your filter/search.</td></tr>`;
         return;
     }
 
@@ -813,6 +816,14 @@ function renderVORPBoard(board) {
         const needBadgeHtml = `<span class="need-badge ${needClass}">${p.need_badge || 'ACTIVE FIT'}</span>`;
         const injuryBadgeHtml = getInjuryBadgeHtml(p.injury_status);
 
+        const byeText = p.bye_week ? `Wk ${p.bye_week}` : '—';
+        let byeBadgeClass = 'bye-badge';
+        if (p.bye_conflict_type === 'CLASH') {
+            byeBadgeClass += ' bye-clash-highlight';
+        } else if (p.bye_conflict_type === 'CLUSTER') {
+            byeBadgeClass += ' bye-cluster-highlight';
+        }
+
         tr.innerHTML = `
             <td>#${idx + 1}</td>
             <td>
@@ -828,6 +839,7 @@ function renderVORPBoard(board) {
                 </div>
             </td>
             <td><span class="badge" style="background: rgba(255,255,255,0.06);">${p.position}</span> <span style="color: var(--text-muted);">${p.team}</span></td>
+            <td><span class="${byeBadgeClass}">${byeText}</span></td>
             <td><span class="tier-badge ${tierClass}">Tier ${p.tier}</span></td>
             <td>${needBadgeHtml}</td>
             <td class="vorp-val">+${p.vorp} <small style="font-size:0.7rem; color:var(--text-muted);">(+${p.vorp_per_week}/wk)</small></td>
@@ -866,7 +878,7 @@ function renderOpponentThreats(threats) {
     container.innerHTML = '';
 
     if (!threats || threats.length === 0) {
-        container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted); padding: 0.5rem;">No opponents picking before your next turn.</div>`;
+        container.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted); padding: 0.5rem;">No opponents drafting before your next turn.</div>`;
         return;
     }
 
@@ -874,9 +886,9 @@ function renderOpponentThreats(threats) {
         const div = document.createElement('div');
         div.className = 'threat-item';
         div.innerHTML = `
-            <div class="threat-info">
-                <span class="threat-team" title="${t.team_name}">${t.team_name}</span>
-                <div class="threat-sub">${t.picks_away} pick(s) ahead</div>
+            <div class="threat-team-info">
+                <strong>#${t.team_id} ${t.team_name}</strong>
+                <span class="threat-meta">Pick #${t.pick_number} (Round ${t.round})</span>
             </div>
             <div class="threat-need">${t.urgent_need}</div>
         `;
@@ -899,8 +911,9 @@ function renderUserRoster(roster) {
     roster.forEach(p => {
         const div = document.createElement('div');
         div.className = 'roster-item';
+        const byeBadgeHtml = p.bye_week ? ` <span class="bye-badge-sm">Wk ${p.bye_week}</span>` : '';
         div.innerHTML = `
-            <span><strong>${p.position}</strong> ${p.name} <small style="color:var(--text-muted);">(${p.team})</small></span>
+            <span><strong>${p.position}</strong> ${p.name} <small style="color:var(--text-muted);">(${p.team})</small>${byeBadgeHtml}</span>
             <span style="color: var(--accent-cyan); font-weight: 600;">${p.projected_season} pts</span>
         `;
         container.appendChild(div);
