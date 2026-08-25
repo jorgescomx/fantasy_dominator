@@ -726,7 +726,7 @@ function populateDraftTeamFilter(board) {
     const uniqueTeams = Array.from(new Set([...boardTeams, ...allNflTeams])).sort();
 
     // Preserve options
-    teamFilter.innerHTML = '<option value="ALL">All Teams</option>';
+    teamFilter.innerHTML = '<option value="ALL">🏈 All Teams</option>';
     uniqueTeams.forEach(team => {
         const opt = document.createElement('option');
         opt.value = team;
