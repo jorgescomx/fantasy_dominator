@@ -596,6 +596,51 @@ body.dark-theme {
     border-color: var(--accent-cyan);
 }
 
+.team-filter-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.team-filter-select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.3rem 0.65rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    height: 29px;
+}
+
+.team-filter-select:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+}
+
+.team-filter-select:focus {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.25);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.team-filter-select.active-filter {
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+    background: rgba(0, 242, 254, 0.12);
+    box-shadow: 0 0 8px rgba(0, 242, 254, 0.2);
+}
+
+.team-filter-select option {
+    background: #0b111e;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
 /* Tables */
 .table-container {
     overflow-x: auto;

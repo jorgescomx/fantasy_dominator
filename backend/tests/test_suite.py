@@ -68,10 +68,41 @@ def test_waiver_radar():
     drops = waiver_radar.evaluate_drop_candidates(1)
     print(f"  [PASS] Drop Candidates Identified: {len(drops)}")
 
+def test_injury_intelligence():
+    print("Testing Contextual Injury Intelligence & Specific Model Impacts...")
+    from backend.app.services.injury_registry import get_injury_details
+    
+    # Test soft-tissue strain
+    cmc_inj = get_injury_details("Christian McCaffrey", "QUESTIONABLE")
+    assert cmc_inj is not None
+    assert "12% touch-cap discount" in cmc_inj["impact_summary"]
+    assert cmc_inj["discount_factor"] == 0.88
+    
+    # Test precautionary tweak
+    jeanty_inj = get_injury_details("Ashton Jeanty", "QUESTIONABLE")
+    assert jeanty_inj is not None
+    assert "5% precautionary snap variance" in jeanty_inj["impact_summary"]
+    assert jeanty_inj["discount_factor"] == 0.95
+    
+    # Test contusion/pain management
+    puka_inj = get_injury_details("Puka Nacua", "QUESTIONABLE")
+    assert puka_inj is not None
+    assert "8% contact efficiency discount" in puka_inj["impact_summary"]
+    assert puka_inj["discount_factor"] == 0.92
+    
+    # Test reserve / PUP / long-term
+    hock_inj = get_injury_details("TJ Hockenson", "PUP")
+    assert hock_inj is not None
+    assert "100% discount" in hock_inj["impact_summary"]
+    assert hock_inj["discount_factor"] == 0.0
+    
+    print("  [PASS] Curated & dynamic injury models return tailored medical notes and calibrated discount factors.")
+
 if __name__ == "__main__":
     test_nfl_stats()
     test_draft_engine()
     test_lineup_optimizer()
     test_waiver_radar()
+    test_injury_intelligence()
     print("\n>>> ALL TESTS PASSED SUCCESSFULLY! <<<")
 

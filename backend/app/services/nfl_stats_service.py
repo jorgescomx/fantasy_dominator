@@ -263,7 +263,11 @@ class NFLStatsService:
         elif injury_status in ["DOUBTFUL", "D"]:
             injury_factor = 0.40
         elif injury_status in ["QUESTIONABLE", "Q"]:
-            injury_factor = 0.90  # 10% volume risk & snap management discount
+            inj_details = get_injury_details(player.get("name", ""), injury_status, player.get("injury_type"), player.get("injury_notes"))
+            if inj_details and "discount_factor" in inj_details:
+                injury_factor = inj_details["discount_factor"]
+            else:
+                injury_factor = 0.90
 
         final_proj = base * vegas_factor * matchup_factor * weather_penalty * spread_factor * qb_vulture_penalty * ppr_target_factor * injury_factor
         return round(final_proj, 1)

@@ -4,6 +4,7 @@ const API_BASE = '/api/v1';
 const USER_TEAM_STORAGE_KEY = 'fantasy_dominator_user_team_id';
 
 let currentPosFilter = 'ALL';
+let currentTeamFilter = 'ALL';
 let currentSearchQuery = '';
 let currentOptimizationMode = 'balanced';
 let cachedPlayers = [];
@@ -465,6 +466,20 @@ function initDraftAssistant() {
         });
     });
 
+    // Team Filter Dropdown
+    const teamFilter = document.getElementById('draft-team-filter');
+    if (teamFilter) {
+        teamFilter.addEventListener('change', (e) => {
+            currentTeamFilter = e.target.value;
+            if (currentTeamFilter !== 'ALL') {
+                teamFilter.classList.add('active-filter');
+            } else {
+                teamFilter.classList.remove('active-filter');
+            }
+            renderVORPBoard(cachedDraftBoard);
+        });
+    }
+
     // Search Input
     const searchInput = document.getElementById('draft-search-input');
     if (searchInput) {
@@ -679,6 +694,7 @@ async function loadDraftState() {
 
         // Cache Draft Board & Render
         cachedDraftBoard = state.recommended_board || [];
+        populateDraftTeamFilter(cachedDraftBoard);
         renderVORPBoard(cachedDraftBoard);
 
         // Render Opponent Threats
@@ -692,6 +708,45 @@ async function loadDraftState() {
     }
 }
 
+function populateDraftTeamFilter(board) {
+    const teamFilter = document.getElementById('draft-team-filter');
+    if (!teamFilter) return;
+
+    const currentVal = teamFilter.value || currentTeamFilter || 'ALL';
+    
+    // Extract unique sorted NFL teams from the board and known NFL teams
+    const allNflTeams = [
+        "ARI", "ATL", "BAL", "BUF", "CAR", "CHI", "CIN", "CLE",
+        "DAL", "DEN", "DET", "GB", "HOU", "IND", "JAX", "KC",
+        "LAC", "LAR", "LV", "MIA", "MIN", "NE", "NO", "NYG",
+        "NYJ", "PHI", "PIT", "SEA", "SF", "TB", "TEN", "WAS"
+    ];
+    
+    const boardTeams = Array.from(new Set((board || []).map(p => p.team).filter(Boolean)));
+    const uniqueTeams = Array.from(new Set([...boardTeams, ...allNflTeams])).sort();
+
+    // Preserve options
+    teamFilter.innerHTML = '<option value="ALL">All Teams</option>';
+    uniqueTeams.forEach(team => {
+        const opt = document.createElement('option');
+        opt.value = team;
+        opt.textContent = team;
+        if (team === currentVal) {
+            opt.selected = true;
+        }
+        teamFilter.appendChild(opt);
+    });
+
+    if (currentVal !== 'ALL' && uniqueTeams.includes(currentVal)) {
+        teamFilter.value = currentVal;
+        teamFilter.classList.add('active-filter');
+    } else {
+        teamFilter.value = 'ALL';
+        currentTeamFilter = 'ALL';
+        teamFilter.classList.remove('active-filter');
+    }
+}
+
 function renderVORPBoard(board) {
     const tbody = document.getElementById('vorp-board-tbody');
     tbody.innerHTML = '';
@@ -699,6 +754,10 @@ function renderVORPBoard(board) {
     let filtered = [...(board || [])];
     if (currentPosFilter !== 'ALL') {
         filtered = filtered.filter(p => p.position === currentPosFilter);
+    }
+
+    if (currentTeamFilter && currentTeamFilter !== 'ALL') {
+        filtered = filtered.filter(p => p.team && p.team.toUpperCase() === currentTeamFilter.toUpperCase());
     }
 
     if (currentSearchQuery) {

@@ -1,6 +1,7 @@
 """
 Comprehensive NFL Injury Intelligence Registry.
 Provides verified medical diagnoses, return timelines, coaching updates, and practice participation notes.
+Calculates dynamic, context-specific model discounts based on injury pathophysiology.
 """
 from typing import Dict, Any, Optional
 
@@ -11,23 +12,26 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "Calf Strain / Achilles Precaution",
         "timeline": "Day-to-day (Tracking for Week 1)",
         "notes": "Managing mild preseason calf tightness. Kyle Shanahan confirmed it is standard veteran workload management and CMC is projected to start Week 1.",
-        "impact_summary": "10% volume risk & snap management discount applied"
+        "impact_summary": "12% touch-cap discount & high-speed re-injury volatility modeled",
+        "discount_factor": 0.88
     },
     "ricky pearsall": {
         "status": "QUESTIONABLE",
         "type": "Hamstring / Shoulder Strain",
         "timeline": "Day-to-day (Tracking for Week 1)",
         "notes": "Working through preseason soft-tissue maintenance; participating in individual route drills.",
-        "impact_summary": "10% volume risk discount applied"
+        "impact_summary": "12% touch-cap discount & soft-tissue re-injury volatility modeled",
+        "discount_factor": 0.88
     },
 
     # Raiders
     "ashton jeanty": {
         "status": "QUESTIONABLE",
-        "type": "Weekend Scrimmage Lower-Body Tweak",
+        "type": "Precautionary Scrimmage Tweak",
         "timeline": "Day-to-day (Expected for Season Opener)",
-        "notes": "Suffered a minor lower-body tweak over the weekend scrimmage. Raiders coaching staff is holding him out of contact drills as a precaution.",
-        "impact_summary": "10% volume risk & snap management discount applied"
+        "notes": "Suffered a minor lower-body tweak over the weekend scrimmage. Raiders coaching staff is holding him out of contact drills purely as a precaution.",
+        "impact_summary": "5% precautionary snap variance applied; full starter ceiling intact",
+        "discount_factor": 0.95
     },
 
     # Rams
@@ -36,7 +40,8 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "Right Knee Bursa Sac Contusion",
         "timeline": "Day-to-day (Ramping up for Week 1)",
         "notes": "Suffered a burst bursa sac during joint practices with the Chargers. Avoided ligament damage; Sean McVay confirmed he is expected ready for Week 1.",
-        "impact_summary": "10% volume risk discount applied"
+        "impact_summary": "8% contact efficiency discount; full route participation expected",
+        "discount_factor": 0.92
     },
 
     # Chargers
@@ -45,7 +50,8 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "Plantar Fascia (Right Foot)",
         "timeline": "Day-to-day (Out of walking boot)",
         "notes": "Diagnosed with plantar fascia injury in late July. Removed from walking boot, throwing in 7-on-7 drills, and on track for season opener.",
-        "impact_summary": "10% mobility discount applied"
+        "impact_summary": "10% rushing mobility discount; pocket passing volume unaffected",
+        "discount_factor": 0.92
     },
 
     # Vikings
@@ -54,7 +60,8 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "Right Knee (ACL / MCL Reconstruction)",
         "timeline": "Out Weeks 1-6 (Eligible to return Week 7)",
         "notes": "Opening the regular season on the Reserve/PUP list while completing multi-ligament knee rehabilitation.",
-        "impact_summary": "Projecting 0 starting points until cleared"
+        "impact_summary": "100% discount (0.0 pts) — zero starting equity until officially activated",
+        "discount_factor": 0.0
     },
 
     # Browns
@@ -63,14 +70,16 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "Multi-Ligament Left Knee Reconstruction",
         "timeline": "Out Weeks 1-4 (Targeting October return)",
         "notes": "Placed on Reserve/PUP list. Ramping up on-field cutting and agility work with team medical staff.",
-        "impact_summary": "Projecting 0 starting points until cleared"
+        "impact_summary": "100% discount (0.0 pts) — zero starting equity until officially activated",
+        "discount_factor": 0.0
     },
     "deshaun watson": {
         "status": "QUESTIONABLE",
         "type": "Right Shoulder (Glenoid Labrum Rehab)",
         "timeline": "Cleared / Managing maintenance days",
         "notes": "Recovered from glenoid labrum surgery. Taking full first-team reps with periodic scheduled maintenance days.",
-        "impact_summary": "10% volume risk discount applied"
+        "impact_summary": "5% veteran maintenance variance applied; full passing volume modeled",
+        "discount_factor": 0.95
     },
 
     # Chiefs
@@ -79,14 +88,16 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "Sternoclavicular Joint Dislocation",
         "timeline": "4-6 Weeks (Targeting late September)",
         "notes": "Suffered a sternoclavicular dislocation during preseason Week 1. Avoided surgery and is rehabbing on schedule.",
-        "impact_summary": "Projecting 0 starting points until cleared"
+        "impact_summary": "100% discount (0.0 pts) — zero starting equity until officially activated",
+        "discount_factor": 0.0
     },
     "hollywood brown": {
         "status": "OUT",
         "type": "Sternoclavicular Joint Dislocation",
         "timeline": "4-6 Weeks (Targeting late September)",
         "notes": "Suffered a sternoclavicular dislocation during preseason Week 1. Avoided surgery and is rehabbing on schedule.",
-        "impact_summary": "Projecting 0 starting points until cleared"
+        "impact_summary": "100% discount (0.0 pts) — zero starting equity until officially activated",
+        "discount_factor": 0.0
     },
 
     # Panthers
@@ -95,7 +106,8 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "ACL Reconstruction Recovery",
         "timeline": "Out Weeks 1-4 (Targeting Week 5 debut)",
         "notes": "Placed on Reserve/NFI list while finishing ACL rehab from college injury. Expected to assume lead backfield role upon return in October.",
-        "impact_summary": "Projecting 0 starting points until cleared"
+        "impact_summary": "100% discount (0.0 pts) — zero starting equity until officially activated",
+        "discount_factor": 0.0
     },
 
     # Colts
@@ -104,7 +116,8 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "High Ankle Sprain",
         "timeline": "2-3 Weeks (Targeting Week 2-3 return)",
         "notes": "Suffered a high ankle sprain during 7-on-7 drills in camp. Progressing through rehab exercises.",
-        "impact_summary": "10% volume risk discount applied"
+        "impact_summary": "15% lateral agility & snap restriction discount applied",
+        "discount_factor": 0.85
     },
 
     # Saints
@@ -113,7 +126,8 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "Hamstring Strain",
         "timeline": "Week-to-week",
         "notes": "Dealing with recurring hamstring tightness throughout preseason camp.",
-        "impact_summary": "10% volume risk discount applied"
+        "impact_summary": "15% recurring soft-tissue volatility & touch-cap discount applied",
+        "discount_factor": 0.85
     },
 
     # Ravens
@@ -122,7 +136,8 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "ACL Reconstruction",
         "timeline": "Out Weeks 1-4 (Targeting midseason)",
         "notes": "Starting regular season on Reserve/PUP list after late 2023 ACL surgery.",
-        "impact_summary": "Projecting 0 starting points until cleared"
+        "impact_summary": "100% discount (0.0 pts) — zero starting equity until officially activated",
+        "discount_factor": 0.0
     },
 
     # Steelers
@@ -131,7 +146,8 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "Ankle Sprain",
         "timeline": "1-2 Weeks (Questionable for Week 1)",
         "notes": "Suffered an ankle sprain during early camp drills. Resumed straight-line running on grass.",
-        "impact_summary": "10% volume risk discount applied"
+        "impact_summary": "10% cutting agility discount & snap ramp-up applied",
+        "discount_factor": 0.90
     },
 
     # Falcons
@@ -140,7 +156,8 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "Knee Surgery Rehab",
         "timeline": "Cleared for non-contact team drills",
         "notes": "Operating without physical limitations as primary backup following collegiate knee procedures.",
-        "impact_summary": "10% volume risk discount applied"
+        "impact_summary": "5% precautionary maintenance variance applied",
+        "discount_factor": 0.95
     },
 
     # Cardinals
@@ -149,7 +166,8 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
         "type": "Preseason High Ankle Sprain",
         "timeline": "1-2 Weeks (Questionable for Week 1)",
         "notes": "Managing a high ankle sprain from preseason practice; undergoing daily treatment with training staff.",
-        "impact_summary": "10% volume risk discount applied"
+        "impact_summary": "10% cutting agility discount & snap ramp-up applied",
+        "discount_factor": 0.90
     }
 }
 
@@ -253,34 +271,57 @@ def get_injury_details(player_name: str, raw_status: Optional[str] = None, raw_b
     # 3. If raw status is an active injury designation, build dynamic context
     st = (raw_status or "").upper()
     if st in ["QUESTIONABLE", "Q", "DOUBTFUL", "D", "OUT", "O", "IR", "PUP", "SUSPENDED"]:
-        body_part = raw_body_part or "Reported Injury"
+        body_part = (raw_body_part or "Reported Injury").strip()
+        bp_lower = body_part.lower()
+
         if st in ["QUESTIONABLE", "Q"]:
             status_label = "QUESTIONABLE"
             timeline = "Awaiting official practice participation report"
             notes = raw_notes or f"{player_name} is listed as Questionable on the official injury report. Awaiting practice report disclosure."
-            impact = "10% volume risk & snap management discount applied"
+            
+            # Dynamic pathophysiological category discount
+            if any(s in bp_lower for s in ["hamstring", "calf", "groin", "quad", "thigh", "soft tissue"]):
+                impact = "12% touch-cap discount & high-speed re-injury volatility modeled"
+                discount_factor = 0.88
+            elif any(s in bp_lower for s in ["ankle", "foot", "toe", "plantar", "turf toe"]):
+                impact = "10% cutting mobility discount & snap restriction applied"
+                discount_factor = 0.90
+            elif any(s in bp_lower for s in ["knee", "bursa", "contusion", "bruise", "ribs", "shoulder", "chest", "wrist"]):
+                impact = "8% contact efficiency discount; full route participation expected"
+                discount_factor = 0.92
+            elif any(s in bp_lower for s in ["rest", "maintenance", "tweak", "precaution", "precautionary", "illness", "ill"]):
+                impact = "5% precautionary snap variance applied; full starter ceiling intact"
+                discount_factor = 0.95
+            else:
+                impact = "10% volume risk & snap management discount applied"
+                discount_factor = 0.90
+
         elif st in ["DOUBTFUL", "D"]:
             status_label = "DOUBTFUL"
             timeline = "1-2 Weeks (Doubtful for upcoming game)"
             notes = raw_notes or f"{player_name} is doubtful for the upcoming contest."
-            impact = "60% severe volume risk discount applied"
+            impact = "60% severe volume risk & emergency backup discount applied"
+            discount_factor = 0.40
         elif st in ["IR", "PUP"]:
             status_label = st
             timeline = "Minimum 4 Weeks on reserve list"
             notes = raw_notes or f"{player_name} is placed on the Reserve/{st} list."
-            impact = "Projecting 0 starting points until cleared"
+            impact = "100% discount (0.0 pts) — zero starting equity until officially activated"
+            discount_factor = 0.0
         else:
             status_label = "OUT"
             timeline = "Ruled Out for upcoming game"
             notes = raw_notes or f"{player_name} has been ruled Out for the upcoming game."
-            impact = "Projecting 0 starting points until cleared"
+            impact = "100% discount (0.0 pts) — zero starting equity until officially activated"
+            discount_factor = 0.0
 
         return {
             "status": status_label,
             "type": f"{body_part} (Practice Report)" if raw_body_part else "Practice Report Designation",
             "timeline": timeline,
             "notes": notes,
-            "impact_summary": impact
+            "impact_summary": impact,
+            "discount_factor": discount_factor
         }
 
     return None
