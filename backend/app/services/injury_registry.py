@@ -254,8 +254,13 @@ def normalize_name(name: str) -> str:
 def get_injury_details(player_name: str, raw_status: Optional[str] = None, raw_body_part: Optional[str] = None, raw_notes: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Look up curated injury intelligence or generate structured fallback."""
     norm = normalize_name(player_name)
+    st = (raw_status or "").upper()
 
-    # 1. Check if mistakenly flagged healthy starter
+    # 1. If player is ACTIVE/healthy or explicitly listed in healthy starters, return None
+    if st in ["ACTIVE", "HEALTHY", "CLEARED", "NONE", ""]:
+        if norm not in INJURY_REGISTRY:
+            return None
+
     if norm in HEALTHY_STARTERS:
         return None
 
@@ -263,13 +268,12 @@ def get_injury_details(player_name: str, raw_status: Optional[str] = None, raw_b
     if norm in INJURY_REGISTRY:
         return dict(INJURY_REGISTRY[norm])
 
-    # Also check partial match in registry
+    # Also check exact key matches
     for k, v in INJURY_REGISTRY.items():
-        if k in norm or norm in k:
+        if k == norm:
             return dict(v)
 
     # 3. If raw status is an active injury designation, build dynamic context
-    st = (raw_status or "").upper()
     if st in ["QUESTIONABLE", "Q", "DOUBTFUL", "D", "OUT", "O", "IR", "PUP", "SUSPENDED"]:
         body_part = (raw_body_part or "Reported Injury").strip()
         bp_lower = body_part.lower()

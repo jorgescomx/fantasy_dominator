@@ -703,6 +703,9 @@ async function loadDraftState() {
         // Render User Roster
         renderUserRoster(state.user_roster);
 
+        // Render Target Position & Best Available Plan
+        renderTargetPositionsPlan(state.user_roster, cachedDraftBoard, state);
+
     } catch (e) {
         console.error('Error loading draft state:', e);
     }
@@ -917,6 +920,168 @@ function renderUserRoster(roster) {
             <span style="color: var(--accent-cyan); font-weight: 600;">${p.projected_season} pts</span>
         `;
         container.appendChild(div);
+    });
+}
+
+function renderTargetPositionsPlan(userRoster, draftBoard, state) {
+    const container = document.getElementById('target-positions-plan-list');
+    const countBadge = document.getElementById('target-plan-count-badge');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const currentPickNumber = (state && state.current_pick_number) ? state.current_pick_number : 1;
+    const currentRound = (state && state.round) ? state.round : 1;
+    const numTeams = (state && state.league_teams && state.league_teams.length > 0) ? state.league_teams.length : 10;
+
+    // Define standard 15 roster position slots
+    const rosterSlots = [
+        { slotId: 'QB', label: 'Quarterback (QB1)', key: 'QB', allowedPos: ['QB'] },
+        { slotId: 'RB1', label: 'RB1 Starter', key: 'RB1', allowedPos: ['RB'] },
+        { slotId: 'RB2', label: 'RB2 Starter', key: 'RB2', allowedPos: ['RB'] },
+        { slotId: 'WR1', label: 'WR1 Starter', key: 'WR1', allowedPos: ['WR'] },
+        { slotId: 'WR2', label: 'WR2 Starter', key: 'WR2', allowedPos: ['WR'] },
+        { slotId: 'TE', label: 'Tight End (TE1)', key: 'TE', allowedPos: ['TE'] },
+        { slotId: 'FLEX', label: 'FLEX Starter (RB/WR/TE)', key: 'FLEX', allowedPos: ['RB', 'WR', 'TE'] },
+        { slotId: 'DEF', label: 'Defense / ST', key: 'DEF', allowedPos: ['DEF', 'D/ST'] },
+        { slotId: 'K', label: 'Kicker', key: 'K', allowedPos: ['K'] },
+        { slotId: 'BN1', label: 'Bench RB Depth', key: 'BN1', allowedPos: ['RB', 'WR'] },
+        { slotId: 'BN2', label: 'Bench WR Depth', key: 'BN2', allowedPos: ['WR', 'RB'] },
+        { slotId: 'BN3', label: 'Bench Flex Depth', key: 'BN3', allowedPos: ['RB', 'WR', 'TE'] },
+        { slotId: 'BN4', label: 'Bench QB/TE Backup', key: 'BN4', allowedPos: ['QB', 'TE', 'WR', 'RB'] },
+        { slotId: 'BN5', label: 'Bench Upside Flex', key: 'BN5', allowedPos: ['WR', 'RB', 'TE'] },
+        { slotId: 'BN6', label: 'Bench Upside Value', key: 'BN6', allowedPos: ['RB', 'WR', 'TE', 'QB', 'DEF', 'K'] }
+    ];
+
+    const poolRoster = [...(userRoster || [])];
+    const filledSlots = {};
+
+    function extractFirstMatching(positions) {
+        const idx = poolRoster.findIndex(p => positions.includes(p.position));
+        if (idx !== -1) {
+            return poolRoster.splice(idx, 1)[0];
+        }
+        return null;
+    }
+
+    // 1. Fill Starters first
+    filledSlots['QB'] = extractFirstMatching(['QB']);
+    filledSlots['RB1'] = extractFirstMatching(['RB']);
+    filledSlots['RB2'] = extractFirstMatching(['RB']);
+    filledSlots['WR1'] = extractFirstMatching(['WR']);
+    filledSlots['WR2'] = extractFirstMatching(['WR']);
+    filledSlots['TE'] = extractFirstMatching(['TE']);
+    filledSlots['FLEX'] = extractFirstMatching(['RB', 'WR', 'TE']);
+    filledSlots['DEF'] = extractFirstMatching(['DEF', 'D/ST']);
+    filledSlots['K'] = extractFirstMatching(['K']);
+
+    // 2. Fill Bench slots
+    filledSlots['BN1'] = extractFirstMatching(['RB', 'WR']);
+    filledSlots['BN2'] = extractFirstMatching(['WR', 'RB']);
+    filledSlots['BN3'] = extractFirstMatching(['RB', 'WR', 'TE']);
+    filledSlots['BN4'] = extractFirstMatching(['QB', 'TE', 'WR', 'RB']);
+    filledSlots['BN5'] = poolRoster.length > 0 ? poolRoster.shift() : null;
+    filledSlots['BN6'] = poolRoster.length > 0 ? poolRoster.shift() : null;
+
+    let filledCount = 0;
+    Object.keys(filledSlots).forEach(k => {
+        if (filledSlots[k]) filledCount++;
+    });
+
+    if (countBadge) {
+        countBadge.textContent = `${filledCount} / 15 Filled`;
+    }
+
+    const allocatedTargetIds = new Set();
+    const availablePlayers = [...(draftBoard || [])];
+
+    rosterSlots.forEach((slot) => {
+        const draftedPlayer = filledSlots[slot.slotId];
+        const slotItem = document.createElement('div');
+
+        if (draftedPlayer) {
+            slotItem.className = 'target-slot-item slot-filled';
+            const byeText = draftedPlayer.bye_week ? ` • Wk ${draftedPlayer.bye_week}` : '';
+            
+            slotItem.innerHTML = `
+                <div class="target-slot-header">
+                    <div class="target-slot-title">
+                        <span class="target-pos-tag">${slot.key}</span>
+                        <span>${slot.label}</span>
+                    </div>
+                    <span class="target-slot-badge badge-status-filled">✓ FILLED</span>
+                </div>
+                <div class="target-slot-body">
+                    <div class="target-player-info">
+                        <span class="target-player-name">${draftedPlayer.name} <small style="color:var(--text-muted);">(${draftedPlayer.team}${byeText})</small></span>
+                        <span class="target-player-sub" style="color:var(--accent-emerald);">Drafted • ${draftedPlayer.projected_season || ''} pts</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            let targetPlayer = null;
+            for (const p of availablePlayers) {
+                if (slot.allowedPos.includes(p.position) && !allocatedTargetIds.has(p.id)) {
+                    targetPlayer = p;
+                    allocatedTargetIds.add(p.id);
+                    break;
+                }
+            }
+
+            if (targetPlayer) {
+                const adpVal = targetPlayer.adp || (availablePlayers.indexOf(targetPlayer) + 1);
+                const estOverallPick = Math.max(1, Math.round(adpVal));
+                const recRound = Math.max(1, Math.ceil(estOverallPick / numTeams));
+                const pickInRound = ((estOverallPick - 1) % numTeams) + 1;
+                const formattedPickStr = `${recRound}.${pickInRound < 10 ? '0' + pickInRound : pickInRound}`;
+
+                const isCurrentTurnOrUrgent = estOverallPick <= currentPickNumber || recRound <= currentRound;
+
+                const roundBadgeText = isCurrentTurnOrUrgent
+                    ? `🚨 Pick NOW in Round ${currentRound}`
+                    : `Target: Round ${recRound} (Pick ${formattedPickStr} / #${estOverallPick})`;
+
+                const itemClass = isCurrentTurnOrUrgent ? 'target-slot-item slot-open slot-urgent' : 'target-slot-item slot-open';
+                const statusBadgeClass = isCurrentTurnOrUrgent ? 'target-slot-badge badge-status-now' : 'target-slot-badge badge-status-target';
+                const statusBadgeLabel = isCurrentTurnOrUrgent ? '🔥 DRAFT NOW' : '🎯 TARGET';
+
+                slotItem.className = itemClass;
+                slotItem.innerHTML = `
+                    <div class="target-slot-header">
+                        <div class="target-slot-title">
+                            <span class="target-pos-tag">${slot.key}</span>
+                            <span>${slot.label}</span>
+                        </div>
+                        <span class="${statusBadgeClass}">${statusBadgeLabel}</span>
+                    </div>
+                    <div class="target-slot-body">
+                        <div class="target-player-info">
+                            <span class="target-player-name">${targetPlayer.name} <small style="color:var(--accent-cyan);">(${targetPlayer.position} - ${targetPlayer.team})</small></span>
+                            <span class="target-round-tag ${isCurrentTurnOrUrgent ? 'now-highlight' : ''}">${roundBadgeText}</span>
+                        </div>
+                        <button class="btn-target-draft" onclick="event.stopPropagation(); draftPlayer('${targetPlayer.id}')">Draft</button>
+                    </div>
+                `;
+            } else {
+                slotItem.className = 'target-slot-item slot-open';
+                slotItem.innerHTML = `
+                    <div class="target-slot-header">
+                        <div class="target-slot-title">
+                            <span class="target-pos-tag">${slot.key}</span>
+                            <span>${slot.label}</span>
+                        </div>
+                        <span class="target-slot-badge badge-status-target">OPEN</span>
+                    </div>
+                    <div class="target-slot-body">
+                        <div class="target-player-info">
+                            <span class="target-player-name" style="color:var(--text-muted);">No player remaining</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        container.appendChild(slotItem);
     });
 }
 
