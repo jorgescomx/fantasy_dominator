@@ -174,7 +174,7 @@ class ESPNService:
             self.is_connected = False
             return {
                 "status": "demo_fallback",
-                "message": f"ESPN Auth Note: {str(e)}. Switched to 10-Team Mock Engine.",
+                "message": "ESPN connection failed. Switched to 10-Team Mock Engine.",
                 "league_name": f"Mock League (ID: {self.league_id})",
                 "teams_count": 10
             }

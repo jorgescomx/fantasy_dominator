@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 
 from backend.app.services.nfl_stats_service import nfl_stats_service
@@ -12,25 +12,25 @@ router = APIRouter()
 
 # --- Request / Response Models ---
 class ESPNConnectRequest(BaseModel):
-    league_id: str
-    year: int = 2024
-    espn_s2: Optional[str] = ""
-    swid: Optional[str] = ""
+    league_id: str = Field(default="", max_length=32, pattern=r"^\d*$")
+    year: int = Field(default=2024, ge=2000, le=2100)
+    espn_s2: Optional[str] = Field(default="", max_length=4096)
+    swid: Optional[str] = Field(default="", max_length=256)
 
 class DraftPickRequest(BaseModel):
-    player_id: str
-    team_id: Optional[int] = None
+    player_id: str = Field(min_length=1, max_length=128)
+    team_id: Optional[int] = Field(default=None, ge=1, le=100)
 
 class DraftResetRequest(BaseModel):
-    user_pick: Optional[int] = 1
+    user_pick: Optional[int] = Field(default=1, ge=1, le=100)
 
 class LineupOptimizeRequest(BaseModel):
-    team_id: Optional[int] = 1
-    mode: Optional[str] = "balanced" # "balanced", "ceiling", "floor"
+    team_id: Optional[int] = Field(default=1, ge=1, le=100)
+    mode: Optional[str] = Field(default="balanced", pattern=r"^(balanced|ceiling|floor)$")
 
 class SitStartCompareRequest(BaseModel):
-    player_id_a: str
-    player_id_b: str
+    player_id_a: str = Field(min_length=1, max_length=128)
+    player_id_b: str = Field(min_length=1, max_length=128)
 
 # --- Endpoints ---
 

@@ -179,7 +179,9 @@ class NFLStatsService:
     def _apply_injury_intelligence(self, player: Dict[str, Any]) -> None:
         name = player.get("name", "")
         norm = normalize_name(name)
-        if norm in HEALTHY_STARTERS:
+        status = str(player.get("injury_status", "ACTIVE")).upper()
+        active_injury_statuses = {"QUESTIONABLE", "Q", "DOUBTFUL", "D", "OUT", "O", "IR", "PUP", "SUSPENDED"}
+        if norm in HEALTHY_STARTERS and status not in active_injury_statuses:
             player["injury_status"] = "ACTIVE"
             player.pop("injury_type", None)
             player.pop("injury_timeline", None)

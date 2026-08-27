@@ -256,12 +256,12 @@ def get_injury_details(player_name: str, raw_status: Optional[str] = None, raw_b
     norm = normalize_name(player_name)
     st = (raw_status or "").upper()
 
-    # 1. If player is ACTIVE/healthy or explicitly listed in healthy starters, return None
+    # Explicit injury designations take precedence over static healthy-player hints.
     if st in ["ACTIVE", "HEALTHY", "CLEARED", "NONE", ""]:
         if norm not in INJURY_REGISTRY:
             return None
 
-    if norm in HEALTHY_STARTERS:
+    if norm in HEALTHY_STARTERS and st not in ["QUESTIONABLE", "Q", "DOUBTFUL", "D", "OUT", "O", "IR", "PUP", "SUSPENDED"]:
         return None
 
     # 2. Check curated intelligence registry

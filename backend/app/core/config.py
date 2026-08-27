@@ -2,16 +2,11 @@ from pydantic import BaseModel
 from typing import Dict, Any, List
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Load .env file
 env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
-if env_path.exists():
-    with open(env_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                os.environ[k.strip()] = v.strip()
+load_dotenv(env_path, override=False)
 
 class LeagueSettings(BaseModel):
     num_teams: int = 10
@@ -64,6 +59,15 @@ class Settings:
     ESPN_YEAR: int = int(os.getenv("ESPN_YEAR", "2024"))
     ESPN_S2: str = os.getenv("ESPN_S2", "")
     ESPN_SWID: str = os.getenv("ESPN_SWID", "")
+    API_KEY: str = os.getenv("API_KEY", "")
+    RATE_LIMIT_PER_MINUTE: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "120"))
+    CORS_ORIGINS: list[str] = [
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000"
+        ).split(",")
+        if origin.strip()
+    ]
     DEFAULT_LEAGUE: LeagueSettings = LeagueSettings()
 
 settings = Settings()

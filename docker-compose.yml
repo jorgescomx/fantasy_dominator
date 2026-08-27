@@ -12,11 +12,13 @@ services:
       - ESPN_S2=${ESPN_S2:-}
       - SWID=${SWID:-}
       - ESPN_LEAGUE_ID=${ESPN_LEAGUE_ID:-}
+      - API_KEY=${API_KEY:?Set API_KEY for Docker deployments}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000}
       - ENVIRONMENT=production
     volumes:
       # Optional: Mount frontend and backend for hot-reloading in dev mode
-      - ./frontend:/app/frontend
-      - ./backend:/app/backend
+      - ./frontend:/app/frontend:ro
+      - ./backend:/app/backend:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s

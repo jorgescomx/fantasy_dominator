@@ -98,6 +98,19 @@ def test_injury_intelligence():
     
     print("  [PASS] Curated & dynamic injury models return tailored medical notes and calibrated discount factors.")
 
+def test_injury_designation_precedence():
+    print("Testing explicit injury designation precedence...")
+    from backend.app.services.injury_registry import get_injury_details
+
+    questionable = get_injury_details("Breece Hall", "QUESTIONABLE")
+    assert questionable is not None
+    assert questionable["status"] == "QUESTIONABLE"
+    assert questionable["notes"]
+
+    active = get_injury_details("Breece Hall", "ACTIVE")
+    assert active is None
+    print("  [PASS] QUESTIONABLE players receive fallback details; ACTIVE players remain untagged.")
+
 def test_bye_week_collision_protection():
     print("Testing Smart Bye Week Collision & Clustering Protection...")
     from backend.app.services.nfl_byes import evaluate_bye_conflicts, get_team_bye_week
@@ -139,6 +152,7 @@ if __name__ == "__main__":
     test_lineup_optimizer()
     test_waiver_radar()
     test_injury_intelligence()
+    test_injury_designation_precedence()
     test_bye_week_collision_protection()
     print("\n>>> ALL TESTS PASSED SUCCESSFULLY! <<<")
 

@@ -3,6 +3,19 @@
 const API_BASE = '/api/v1';
 const USER_TEAM_STORAGE_KEY = 'fantasy_dominator_user_team_id';
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function encodedPlayerId(playerId) {
+    return encodeURIComponent(String(playerId ?? ''));
+}
+
 let currentPosFilter = 'ALL';
 let currentTeamFilter = 'ALL';
 let currentSearchQuery = '';
@@ -119,8 +132,8 @@ function renderSelectedTeamDetails(team) {
 
     detailsBox.innerHTML = `
         <div class="selected-team-info">
-            <div class="selected-team-info-name">⚡ #${team.id} ${team.name}</div>
-            <div class="selected-team-info-meta">Owner: <strong>${team.owner || 'Manager'}</strong> • Team ID: #${team.id}</div>
+            <div class="selected-team-info-name">⚡ #${escapeHtml(team.id)} ${escapeHtml(team.name)}</div>
+            <div class="selected-team-info-meta">Owner: <strong>${escapeHtml(team.owner || 'Manager')}</strong> • Team ID: #${escapeHtml(team.id)}</div>
         </div>
         <div class="selected-team-stats">
             <div class="selected-team-stat-item">
@@ -183,6 +196,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial Load
     initPlayerModal();
     refreshAllData();
+});
+
+document.addEventListener('click', (event) => {
+    const draftButton = event.target.closest('[data-draft-player]');
+    if (draftButton) {
+        event.stopPropagation();
+        draftPlayer(decodeURIComponent(draftButton.dataset.draftPlayer));
+    }
 });
 
 // --- Tab Navigation ---
@@ -423,13 +444,13 @@ window.showPlayerExplanation = async function(playerId) {
             row.className = 'metric-row';
             row.innerHTML = `
                 <div class="metric-row-header">
-                    <span class="metric-title">${m.metric}</span>
+                    <span class="metric-title">${escapeHtml(m.metric)}</span>
                     <div class="metric-badges">
-                        <span class="metric-val-tag">${m.value}</span>
-                        <span class="metric-rating-tag">${m.rating}</span>
+                        <span class="metric-val-tag">${escapeHtml(m.value)}</span>
+                        <span class="metric-rating-tag">${escapeHtml(m.rating)}</span>
                     </div>
                 </div>
-                <div class="metric-desc">${m.explanation}</div>
+                <div class="metric-desc">${escapeHtml(m.explanation)}</div>
             `;
             metricsContainer.appendChild(row);
         });
@@ -812,11 +833,11 @@ function renderVORPBoard(board) {
         
         const tierClass = `tier-${Math.min(p.tier, 3)}`;
         const cliffHtml = p.tier_cliff_warning 
-            ? `<span class="cliff-badge">${p.tier_cliff_warning}</span>` 
+            ? `<span class="cliff-badge">${escapeHtml(p.tier_cliff_warning)}</span>`
             : `<span style="color: var(--text-muted); font-size: 0.75rem;">Stable</span>`;
 
         const needClass = p.need_badge_class || 'need-med';
-        const needBadgeHtml = `<span class="need-badge ${needClass}">${p.need_badge || 'ACTIVE FIT'}</span>`;
+        const needBadgeHtml = `<span class="need-badge ${needClass}">${escapeHtml(p.need_badge || 'ACTIVE FIT')}</span>`;
         const injuryBadgeHtml = getInjuryBadgeHtml(p.injury_status);
 
         const byeText = p.bye_week ? `Wk ${p.bye_week}` : '—';
@@ -832,25 +853,25 @@ function renderVORPBoard(board) {
             <td>
                 <div class="player-name-cell">
                     <div class="player-name-row">
-                        <strong class="player-name-text">${p.name}</strong>
+                        <strong class="player-name-text">${escapeHtml(p.name)}</strong>
                         ${injuryBadgeHtml}
                     </div>
                     <div class="player-sub-row">
-                        <span>${p.archetype || ''}</span>
+                        <span>${escapeHtml(p.archetype || '')}</span>
                         <span class="click-hint">🔍 Breakdown</span>
                     </div>
                 </div>
             </td>
-            <td><span class="badge" style="background: rgba(255,255,255,0.06);">${p.position}</span> <span style="color: var(--text-muted);">${p.team}</span></td>
+            <td><span class="badge" style="background: rgba(255,255,255,0.06);">${escapeHtml(p.position)}</span> <span style="color: var(--text-muted);">${escapeHtml(p.team)}</span></td>
             <td><span class="${byeBadgeClass}">${byeText}</span></td>
-            <td><span class="tier-badge ${tierClass}">Tier ${p.tier}</span></td>
+            <td><span class="tier-badge ${tierClass}">Tier ${escapeHtml(p.tier)}</span></td>
             <td>${needBadgeHtml}</td>
-            <td class="vorp-val">+${p.vorp} <small style="font-size:0.7rem; color:var(--text-muted);">(+${p.vorp_per_week}/wk)</small></td>
-            <td>${p.xfp}</td>
-            <td>${p.projected_season}</td>
+            <td class="vorp-val">+${escapeHtml(p.vorp)} <small style="font-size:0.7rem; color:var(--text-muted);">(+${escapeHtml(p.vorp_per_week)}/wk)</small></td>
+            <td>${escapeHtml(p.xfp)}</td>
+            <td>${escapeHtml(p.projected_season)}</td>
             <td>${cliffHtml}</td>
             <td>
-                <button class="btn btn-pick" onclick="event.stopPropagation(); draftPlayer('${p.id}')">Draft</button>
+                <button class="btn btn-pick" data-draft-player="${escapeHtml(encodedPlayerId(p.id))}">Draft</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -890,10 +911,10 @@ function renderOpponentThreats(threats) {
         div.className = 'threat-item';
         div.innerHTML = `
             <div class="threat-team-info">
-                <strong>#${t.team_id} ${t.team_name}</strong>
-                <span class="threat-meta">Pick #${t.pick_number} (Round ${t.round})</span>
+                <strong>#${escapeHtml(t.team_id)} ${escapeHtml(t.team_name)}</strong>
+                <span class="threat-meta">Pick #${escapeHtml(t.pick_number)} (Round ${escapeHtml(t.round)})</span>
             </div>
-            <div class="threat-need">${t.urgent_need}</div>
+            <div class="threat-need">${escapeHtml(t.urgent_need)}</div>
         `;
         container.appendChild(div);
     });
@@ -916,8 +937,8 @@ function renderUserRoster(roster) {
         div.className = 'roster-item';
         const byeBadgeHtml = p.bye_week ? ` <span class="bye-badge-sm">Wk ${p.bye_week}</span>` : '';
         div.innerHTML = `
-            <span><strong>${p.position}</strong> ${p.name} <small style="color:var(--text-muted);">(${p.team})</small>${byeBadgeHtml}</span>
-            <span style="color: var(--accent-cyan); font-weight: 600;">${p.projected_season} pts</span>
+            <span><strong>${escapeHtml(p.position)}</strong> ${escapeHtml(p.name)} <small style="color:var(--text-muted);">(${escapeHtml(p.team)})</small>${byeBadgeHtml}</span>
+            <span style="color: var(--accent-cyan); font-weight: 600;">${escapeHtml(p.projected_season)} pts</span>
         `;
         container.appendChild(div);
     });
@@ -1007,14 +1028,14 @@ function renderTargetPositionsPlan(userRoster, draftBoard, state) {
                 <div class="target-slot-header">
                     <div class="target-slot-title">
                         <span class="target-pos-tag">${slot.key}</span>
-                        <span>${slot.label}</span>
+                        <span>${escapeHtml(slot.label)}</span>
                     </div>
                     <span class="target-slot-badge badge-status-filled">✓ FILLED</span>
                 </div>
                 <div class="target-slot-body">
                     <div class="target-player-info">
-                        <span class="target-player-name">${draftedPlayer.name} <small style="color:var(--text-muted);">(${draftedPlayer.team}${byeText})</small></span>
-                        <span class="target-player-sub" style="color:var(--accent-emerald);">Drafted • ${draftedPlayer.projected_season || ''} pts</span>
+                        <span class="target-player-name">${escapeHtml(draftedPlayer.name)} <small style="color:var(--text-muted);">(${escapeHtml(draftedPlayer.team)}${escapeHtml(byeText)})</small></span>
+                        <span class="target-player-sub" style="color:var(--accent-emerald);">Drafted • ${escapeHtml(draftedPlayer.projected_season || '')} pts</span>
                     </div>
                 </div>
             `;
@@ -1050,16 +1071,16 @@ function renderTargetPositionsPlan(userRoster, draftBoard, state) {
                     <div class="target-slot-header">
                         <div class="target-slot-title">
                             <span class="target-pos-tag">${slot.key}</span>
-                            <span>${slot.label}</span>
+                            <span>${escapeHtml(slot.label)}</span>
                         </div>
                         <span class="${statusBadgeClass}">${statusBadgeLabel}</span>
                     </div>
                     <div class="target-slot-body">
                         <div class="target-player-info">
-                            <span class="target-player-name">${targetPlayer.name} <small style="color:var(--accent-cyan);">(${targetPlayer.position} - ${targetPlayer.team})</small></span>
+                            <span class="target-player-name">${escapeHtml(targetPlayer.name)} <small style="color:var(--accent-cyan);">(${escapeHtml(targetPlayer.position)} - ${escapeHtml(targetPlayer.team)})</small></span>
                             <span class="target-round-tag ${isCurrentTurnOrUrgent ? 'now-highlight' : ''}">${roundBadgeText}</span>
                         </div>
-                        <button class="btn-target-draft" onclick="event.stopPropagation(); draftPlayer('${targetPlayer.id}')">Draft</button>
+                        <button class="btn-target-draft" data-draft-player="${escapeHtml(encodedPlayerId(targetPlayer.id))}">Draft</button>
                     </div>
                 `;
             } else {
@@ -1145,20 +1166,20 @@ async function loadLineupOptimization() {
             const injuryBadgeHtml = getInjuryBadgeHtml(p.injury_status);
 
             div.innerHTML = `
-                <div class="slot-tag">${p.assigned_slot}</div>
+                <div class="slot-tag">${escapeHtml(p.assigned_slot)}</div>
                 <div>
-                    <div class="player-info-title">${p.name} ${injuryBadgeHtml}</div>
-                    <div class="player-info-sub">${p.position} • ${p.team} vs ${p.opponent || 'TBD'}</div>
+                    <div class="player-info-title">${escapeHtml(p.name)} ${injuryBadgeHtml}</div>
+                    <div class="player-info-sub">${escapeHtml(p.position)} • ${escapeHtml(p.team)} vs ${escapeHtml(p.opponent || 'TBD')}</div>
                 </div>
                 <div class="context-tag">
-                    <div>Vegas: <strong>${p.implied_team_pts || 22.0} pts</strong> (${p.spread || 0})</div>
+                    <div>Vegas: <strong>${escapeHtml(p.implied_team_pts || 22.0)} pts</strong> (${escapeHtml(p.spread || 0)})</div>
                     <div>Weather: ${weatherWind}</div>
                 </div>
                 <div class="context-tag">
-                    <div>xFP: <strong>${p.xfp}</strong></div>
-                    <div>Matchup: <strong>#${p.opp_rank_vs_pos || 16} def</strong></div>
+                    <div>xFP: <strong>${escapeHtml(p.xfp)}</strong></div>
+                    <div>Matchup: <strong>#${escapeHtml(p.opp_rank_vs_pos || 16)} def</strong></div>
                 </div>
-                <div class="proj-pts-badge">${p.score}</div>
+                <div class="proj-pts-badge">${escapeHtml(p.score)}</div>
             `;
             startersGrid.appendChild(div);
         });
@@ -1171,8 +1192,8 @@ async function loadLineupOptimization() {
             div.className = 'bench-card';
             const injuryBadgeHtml = getInjuryBadgeHtml(p.injury_status);
             div.innerHTML = `
-                <span><strong>${p.position}</strong> ${p.name} ${injuryBadgeHtml} <small style="color:var(--text-muted);">(${p.team})</small></span>
-                <span style="color: var(--text-secondary);">${p.score} pts</span>
+                <span><strong>${escapeHtml(p.position)}</strong> ${escapeHtml(p.name)} ${injuryBadgeHtml} <small style="color:var(--text-muted);">(${escapeHtml(p.team)})</small></span>
+                <span style="color: var(--text-secondary);">${escapeHtml(p.score)} pts</span>
             `;
             benchGrid.appendChild(div);
         });
@@ -1256,18 +1277,18 @@ function renderBreakoutFeed(targets) {
         const div = document.createElement('div');
         div.className = 'breakout-card';
 
-        const signalsHtml = p.breakout_signals.map(s => `<div class="signal-bullet">⚡ ${s}</div>`).join('');
+        const signalsHtml = p.breakout_signals.map(s => `<div class="signal-bullet">⚡ ${escapeHtml(s)}</div>`).join('');
         const deltaSign = p.arbitrage_delta >= 0 ? `+${p.arbitrage_delta}` : `${p.arbitrage_delta}`;
         const injuryBadgeHtml = getInjuryBadgeHtml(p.injury_status);
 
         div.innerHTML = `
             <div class="breakout-top">
                 <div>
-                    <h4 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700;">${p.name} ${injuryBadgeHtml}</h4>
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">${p.position} • ${p.team} | ${p.espn_ownership}% Roster %</span>
+                    <h4 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700;">${escapeHtml(p.name)} ${injuryBadgeHtml}</h4>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(p.position)} • ${escapeHtml(p.team)} | ${escapeHtml(p.espn_ownership)}% Roster %</span>
                 </div>
                 <div class="signal-score-badge">
-                    <span class="score-num">${p.breakout_score}</span>
+                    <span class="score-num">${escapeHtml(p.breakout_score)}</span>
                     <span class="score-lbl">BREAKOUT INDEX</span>
                 </div>
             </div>
@@ -1278,7 +1299,7 @@ function renderBreakoutFeed(targets) {
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
                 <span class="delta-badge">${deltaSign} pts vs ESPN Proj</span>
-                <span style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600;">Model: ${p.contextual_proj} pts</span>
+                <span style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600;">Model: ${escapeHtml(p.contextual_proj)} pts</span>
             </div>
         `;
         container.appendChild(div);
@@ -1298,8 +1319,8 @@ function renderDropCandidates(candidates) {
         const div = document.createElement('div');
         div.className = 'drop-item';
         div.innerHTML = `
-            <div class="drop-name">${c.name} (${c.position} - ${c.team})</div>
-            <div class="drop-sub">${c.drop_reasons.join(' • ')}</div>
+            <div class="drop-name">${escapeHtml(c.name)} (${escapeHtml(c.position)} - ${escapeHtml(c.team)})</div>
+            <div class="drop-sub">${escapeHtml(c.drop_reasons.join(' • '))}</div>
         `;
         container.appendChild(div);
     });
@@ -1456,11 +1477,11 @@ async function loadLeagueOverview() {
 
             div.innerHTML = `
                 <div>
-                    <strong style="${isUser ? 'color: var(--accent-cyan); font-weight: 800;' : ''}">#${t.standing} ${t.name}${isUser ? ' (You)' : ''}</strong> 
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">(${t.owner})</span>
+                    <strong style="${isUser ? 'color: var(--accent-cyan); font-weight: 800;' : ''}">#${escapeHtml(t.standing)} ${escapeHtml(t.name)}${isUser ? ' (You)' : ''}</strong>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">(${escapeHtml(t.owner)})</span>
                 </div>
                 <div>
-                    <span style="font-weight: 700; color: var(--accent-cyan);">${t.wins}-${t.losses}</span>
+                    <span style="font-weight: 700; color: var(--accent-cyan);">${escapeHtml(t.wins)}-${escapeHtml(t.losses)}</span>
                 </div>
             `;
             standingsContainer.appendChild(div);

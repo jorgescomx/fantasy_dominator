@@ -22,9 +22,14 @@ COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Run the application without root privileges.
+RUN useradd --create-home --uid 10001 appuser
+
 # Copy backend and frontend source code
 COPY backend /app/backend
 COPY frontend /app/frontend
+RUN chown -R appuser:appuser /app
+USER appuser
 
 # Expose port
 EXPOSE 8000

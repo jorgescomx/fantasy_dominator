@@ -5,6 +5,7 @@ import os
 import uvicorn
 
 from backend.app.core.config import settings
+from backend.app.core.security import SecurityMiddleware
 from backend.app.db.database import init_db
 from backend.app.api.routes import router as api_router
 
@@ -17,11 +18,12 @@ app = FastAPI(
 # Enable CORS for local dev
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key"],
 )
+app.add_middleware(SecurityMiddleware)
 
 # Initialize Database
 @app.on_event("startup")

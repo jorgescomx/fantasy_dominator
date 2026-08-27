@@ -21,8 +21,6 @@ class DBLeagueConfig(Base):
     num_teams = Column(Integer, default=10)
     scoring_type = Column(String, default="PPR")
     is_private = Column(Boolean, default=False)
-    espn_s2 = Column(String, default="")
-    espn_swid = Column(String, default="")
     roster_settings = Column(JSON, default=dict)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
