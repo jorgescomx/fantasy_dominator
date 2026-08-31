@@ -79,16 +79,74 @@ def build_live_roster_database(raw_players: Dict[str, Any]) -> List[Dict[str, An
     roster_list.sort(key=lambda x: (x.get("search_rank") or 9999, x.get("depth_chart_order", 99)))
     return roster_list
 
+def detect_cut_players(raw_players: Dict[str, Any], local_players_db: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Detects players who have been cut/waived from NFL teams.
+    Returns list of cut player records with status changed to CUT.
+    """
+    cut_players = []
+    valid_positions = {"QB", "RB", "WR", "TE", "K", "DEF"}
+
+    for player_id, sleeper_data in raw_players.items():
+        pos = sleeper_data.get("position")
+        team = sleeper_data.get("team")
+
+        if not pos or pos not in valid_positions:
+            continue
+
+        # Player is cut/waived if they have no team in Sleeper
+        if team is None or team == "":
+            full_name = sleeper_data.get("full_name") or f"{sleeper_data.get('first_name', '')} {sleeper_data.get('last_name', '')}".strip()
+
+            # Find this player in our local database
+            for local_player in local_players_db.values():
+                if local_player.get("name", "").lower() == full_name.lower():
+                    # Only report if they previously had a team
+                    if local_player.get("team"):
+                        cut_players.append({
+                            "name": full_name,
+                            "position": pos,
+                            "previous_team": local_player.get("team"),
+                            "sleeper_status": sleeper_data.get("status"),
+                            "id": local_player.get("id")
+                        })
+                    break
+
+    return cut_players
+
+def sync_cut_players(players_db: Dict[str, Any], raw_sleeper_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Syncs cut/waived players and updates their status in the local database.
+    Returns sync statistics.
+    """
+    cut_players = detect_cut_players(raw_sleeper_data, players_db)
+
+    updated_count = 0
+    for cut_player in cut_players:
+        player_id = cut_player["id"]
+        if player_id in players_db:
+            players_db[player_id]["team"] = None
+            players_db[player_id]["injury_status"] = "CUT"
+            players_db[player_id]["depth_chart_order"] = 99
+            updated_count += 1
+            logger.info(f"Marked {cut_player['name']} (was {cut_player['previous_team']}) as CUT")
+
+    return {
+        "cuts_detected": len(cut_players),
+        "cuts_updated": updated_count,
+        "cut_players": cut_players
+    }
+
 if __name__ == "__main__":
     raw = fetch_live_nfl_database()
     roster = build_live_roster_database(raw)
     print(f"Total fantasy-relevant active NFL players compiled: {len(roster)}")
-    
+
     # Check specific players
     tua = next((p for p in roster if "Tua Tagovailoa" in p["name"]), None)
     if tua:
         print("Live Tua Verification:", tua)
-    
+
     benson = next((p for p in roster if "Trey Benson" in p["name"]), None)
     if benson:
         print("Live Trey Benson Verification:", benson)

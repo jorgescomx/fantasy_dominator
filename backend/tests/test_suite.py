@@ -111,6 +111,19 @@ def test_injury_designation_precedence():
     assert active is None
     print("  [PASS] QUESTIONABLE players receive fallback details; ACTIVE players remain untagged.")
 
+
+def test_administrative_statuses_are_not_suppressed():
+    print("Testing administrative status handling for healthy-name players...")
+    from backend.app.services.injury_registry import get_injury_details
+
+    suspended = get_injury_details("Josh Jacobs", "SUSPENDED")
+    assert suspended is not None
+    assert suspended["status"] == "SUSPENDED"
+    assert "suspension" in suspended["type"].lower() or "administrative" in suspended["type"].lower()
+    assert suspended["impact_summary"]
+    print("  [PASS] Suspended players keep a clear availability note and impact summary.")
+
+
 def test_bye_week_collision_protection():
     print("Testing Smart Bye Week Collision & Clustering Protection...")
     from backend.app.services.nfl_byes import evaluate_bye_conflicts, get_team_bye_week
@@ -153,6 +166,7 @@ if __name__ == "__main__":
     test_waiver_radar()
     test_injury_intelligence()
     test_injury_designation_precedence()
+    test_administrative_statuses_are_not_suppressed()
     test_bye_week_collision_protection()
     print("\n>>> ALL TESTS PASSED SUCCESSFULLY! <<<")
 

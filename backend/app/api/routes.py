@@ -140,11 +140,13 @@ def refresh_teams_and_players():
     from datetime import datetime
     try:
         espn_service.refresh_all_data()
+        nfl_sync_result = nfl_stats_service.sync_with_live_nfl_feed()
         draft_engine.refresh_available_players()
         return {
             "success": True,
             "message": "Teams, rosters, and player information refreshed successfully",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "sync_details": nfl_sync_result
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Refresh failed: {str(e)}")

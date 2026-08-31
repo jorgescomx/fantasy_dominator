@@ -25,6 +25,14 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
     },
 
     # Raiders
+    "josh jacobs": {
+        "status": "SUSPENDED",
+        "type": "Administrative Suspension",
+        "timeline": "Administrative - Duration TBD",
+        "notes": "Josh Jacobs is subject to an administrative suspension pending league review or appeal.",
+        "impact_summary": "100% discount (0.0 pts) — unavailable for play during suspension",
+        "discount_factor": 0.0
+    },
     "ashton jeanty": {
         "status": "QUESTIONABLE",
         "type": "Precautionary Scrimmage Tweak",
@@ -261,7 +269,7 @@ def get_injury_details(player_name: str, raw_status: Optional[str] = None, raw_b
         if norm not in INJURY_REGISTRY:
             return None
 
-    if norm in HEALTHY_STARTERS and st not in ["QUESTIONABLE", "Q", "DOUBTFUL", "D", "OUT", "O", "IR", "PUP", "SUSPENDED"]:
+    if norm in HEALTHY_STARTERS and st not in ["QUESTIONABLE", "Q", "DOUBTFUL", "D", "OUT", "O", "IR", "PUP", "SUSPENDED", "CUT"]:
         return None
 
     # 2. Check curated intelligence registry
@@ -274,7 +282,7 @@ def get_injury_details(player_name: str, raw_status: Optional[str] = None, raw_b
             return dict(v)
 
     # 3. If raw status is an active injury designation, build dynamic context
-    if st in ["QUESTIONABLE", "Q", "DOUBTFUL", "D", "OUT", "O", "IR", "PUP", "SUSPENDED"]:
+    if st in ["QUESTIONABLE", "Q", "DOUBTFUL", "D", "OUT", "O", "IR", "PUP", "SUSPENDED", "CUT"]:
         body_part = (raw_body_part or "Reported Injury").strip()
         bp_lower = body_part.lower()
 
@@ -282,7 +290,7 @@ def get_injury_details(player_name: str, raw_status: Optional[str] = None, raw_b
             status_label = "QUESTIONABLE"
             timeline = "Awaiting official practice participation report"
             notes = raw_notes or f"{player_name} is listed as Questionable on the official injury report. Awaiting practice report disclosure."
-            
+
             # Dynamic pathophysiological category discount
             if any(s in bp_lower for s in ["hamstring", "calf", "groin", "quad", "thigh", "soft tissue"]):
                 impact = "12% touch-cap discount & high-speed re-injury volatility modeled"
@@ -312,6 +320,18 @@ def get_injury_details(player_name: str, raw_status: Optional[str] = None, raw_b
             notes = raw_notes or f"{player_name} is placed on the Reserve/{st} list."
             impact = "100% discount (0.0 pts) — zero starting equity until officially activated"
             discount_factor = 0.0
+        elif st == "SUSPENDED":
+            status_label = "SUSPENDED"
+            timeline = "Administrative - Duration TBD"
+            notes = raw_notes or f"{player_name} is subject to an administrative suspension pending league review or appeal."
+            impact = "100% discount (0.0 pts) — unavailable for play during suspension"
+            discount_factor = 0.0
+        elif st == "CUT":
+            status_label = "CUT"
+            timeline = "No longer on active roster"
+            notes = raw_notes or f"{player_name} has been cut/waived from their NFL team and is no longer available."
+            impact = "100% discount (0.0 pts) — no longer on active roster"
+            discount_factor = 0.0
         else:
             status_label = "OUT"
             timeline = "Ruled Out for upcoming game"
@@ -319,9 +339,17 @@ def get_injury_details(player_name: str, raw_status: Optional[str] = None, raw_b
             impact = "100% discount (0.0 pts) — zero starting equity until officially activated"
             discount_factor = 0.0
 
+        # Determine type for suspension, cut, vs injury
+        if st == "SUSPENDED":
+            type_label = "Administrative Suspension"
+        elif st == "CUT":
+            type_label = "Roster Cut / Waived"
+        else:
+            type_label = f"{body_part} (Practice Report)" if raw_body_part else "Practice Report Designation"
+
         return {
             "status": status_label,
-            "type": f"{body_part} (Practice Report)" if raw_body_part else "Practice Report Designation",
+            "type": type_label,
             "timeline": timeline,
             "notes": notes,
             "impact_summary": impact,

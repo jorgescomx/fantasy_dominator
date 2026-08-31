@@ -180,7 +180,7 @@ class NFLStatsService:
         name = player.get("name", "")
         norm = normalize_name(name)
         status = str(player.get("injury_status", "ACTIVE")).upper()
-        active_injury_statuses = {"QUESTIONABLE", "Q", "DOUBTFUL", "D", "OUT", "O", "IR", "PUP", "SUSPENDED"}
+        active_injury_statuses = {"QUESTIONABLE", "Q", "DOUBTFUL", "D", "OUT", "O", "IR", "PUP", "SUSPENDED", "CUT"}
         if norm in HEALTHY_STARTERS and status not in active_injury_statuses:
             player["injury_status"] = "ACTIVE"
             player.pop("injury_type", None)
@@ -260,7 +260,7 @@ class NFLStatsService:
         # Injury Status Impact & Availability Risk Factor
         injury_status = str(player.get("injury_status", "ACTIVE")).upper()
         injury_factor = 1.0
-        if injury_status in ["OUT", "IR", "PUP", "SUSPENDED"]:
+        if injury_status in ["OUT", "IR", "PUP", "SUSPENDED", "CUT"]:
             injury_factor = 0.0
         elif injury_status in ["DOUBTFUL", "D"]:
             injury_factor = 0.40
@@ -296,12 +296,14 @@ class NFLStatsService:
     def sync_with_live_nfl_feed(self) -> Dict[str, Any]:
         """Syncs all players directly with live official NFL transactions and rosters."""
         try:
-            from backend.app.services.live_nfl_sync import fetch_live_nfl_database
+            from backend.app.services.live_nfl_sync import fetch_live_nfl_database, sync_cut_players
             raw_feed = fetch_live_nfl_database()
             if not raw_feed:
                 return {"status": "error", "message": "Failed to fetch live NFL feed"}
 
             updated_count = 0
+            cuts_count = 0
+
             # Match by normalized name
             name_lookup = {}
             for pid, pdata in raw_feed.items():
@@ -310,24 +312,43 @@ class NFLStatsService:
                     norm_name = fname.lower().replace(".", "").replace("'", "").replace("-", " ")
                     name_lookup[norm_name] = pdata
 
+            # Detect and update cut players
+            cut_sync_result = sync_cut_players(self.players_db, raw_feed)
+            cuts_count = cut_sync_result.get("cuts_updated", 0)
+
             for player in self.players_db.values():
                 norm = player["name"].lower().replace(".", "").replace("'", "").replace("-", " ")
                 live_match = name_lookup.get(norm)
                 if live_match:
                     live_team = live_match.get("team")
-                    if live_team and player.get("team") != live_team:
+                    # Update team changes and handle cuts
+                    if live_team is None:
+                        # Player is cut/waived
+                        if player.get("team"):
+                            player["team"] = None
+                            player["injury_status"] = "CUT"
+                            player["depth_chart_order"] = 99
+                            cuts_count += 1
+                            logger.info(f"Detected cut: {player['name']} (was {player.get('team')})")
+                    elif player.get("team") != live_team:
+                        # Player was traded to different team
                         player["team"] = live_team
                         updated_count += 1
-                    
+
                     live_injury = live_match.get("injury_status")
-                    if live_injury:
+                    if live_injury and live_injury.upper() != "CUT":
                         player["injury_status"] = live_injury.upper()
-                    
+
                     if live_match.get("depth_chart_order"):
                         player["depth_chart_order"] = live_match.get("depth_chart_order")
 
-            logger.info(f"Live NFL sync complete: verified/updated {updated_count} players.")
-            return {"status": "success", "updated_players": updated_count, "total_verified": len(self.players_db)}
+            logger.info(f"Live NFL sync complete: {updated_count} trades, {cuts_count} cuts, {len(self.players_db)} total verified.")
+            return {
+                "status": "success",
+                "trades_updated": updated_count,
+                "cuts_detected": cuts_count,
+                "total_verified": len(self.players_db)
+            }
         except Exception as e:
             logger.error(f"Live sync error: {e}")
             return {"status": "error", "message": str(e)}
