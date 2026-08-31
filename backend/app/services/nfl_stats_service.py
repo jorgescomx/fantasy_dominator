@@ -297,7 +297,6 @@ class NFLStatsService:
         """Syncs all players directly with live official NFL transactions and rosters."""
         try:
             from backend.app.services.live_nfl_sync import fetch_live_nfl_database, sync_cut_players
-            from backend.app.services.injury_records_service import sync_espn_injuries
             raw_feed = fetch_live_nfl_database()
             if not raw_feed:
                 return {"status": "error", "message": "Failed to fetch live NFL feed"}
@@ -345,64 +344,47 @@ class NFLStatsService:
                     if live_match.get("depth_chart_order"):
                         player["depth_chart_order"] = live_match.get("depth_chart_order")
 
-            # Sync ESPN injury data to both players_db and injury_records table
-            espn_injury_updates = 0
+            # Sync Sleeper injury data to injury_records table (primary source)
+            sleeper_injury_updates = 0
             try:
-                from backend.app.services.espn_service import espn_service
-                if espn_service.is_connected and espn_service.espn_league_instance:
-                    # Build league data for injury_records_service
-                    league_data = {"teams": []}
-                    for team in espn_service.espn_league_instance.teams:
-                        team_data = {
-                            "roster": []
-                        }
-                        for player_obj in getattr(team, 'roster', []):
-                            player_name = getattr(player_obj, 'name', '')
-                            player_injury = getattr(player_obj, 'injuryStatus', None) or "ACTIVE"
-                            player_id = getattr(player_obj, 'playerId', getattr(player_obj, 'player_id', ''))
-                            injury_info = getattr(player_obj, 'injury', {})
-                            body_part = getattr(injury_info, 'displayName', None) if injury_info else None
+                from backend.app.services.sleeper_sync_service import sync_sleeper_injuries, get_sleeper_players
 
-                            team_data["roster"].append({
-                                "player": {
-                                    "id": player_id,
-                                    "fullName": player_name,
-                                    "injuryStatus": player_injury,
-                                    "injury": {
-                                        "displayName": body_part,
-                                        "detail": None
-                                    }
-                                }
-                            })
+                # Sync Sleeper injuries to database
+                sleeper_sync_result = sync_sleeper_injuries()
+                sleeper_injury_updates = sleeper_sync_result.get("sleeper_injuries_synced", 0)
 
-                            # Find matching player in our players_db and update
-                            norm_espn_name = player_name.lower().replace(".", "").replace("'", "").replace("-", " ")
-                            for player in self.players_db.values():
-                                norm_db_name = player["name"].lower().replace(".", "").replace("'", "").replace("-", " ")
-                                if norm_db_name == norm_espn_name:
-                                    current_status = player.get("injury_status", "").upper()
-                                    # Update injury status from ESPN, but preserve CUT and SUSPENDED
-                                    if player_injury and player_injury.upper() != "CUT" and current_status not in ["CUT", "SUSPENDED"]:
-                                        if player.get("injury_status") != player_injury:
-                                            player["injury_status"] = player_injury.upper()
-                                            espn_injury_updates += 1
-                                    break
+                # Update players_db with Sleeper injury data
+                sleeper_players = get_sleeper_players()
+                for player_id, sleeper_player in sleeper_players.items():
+                    injury_status = sleeper_player.get("injury_status", "ACTIVE")
 
-                        league_data["teams"].append(team_data)
+                    if injury_status and injury_status.upper() != "ACTIVE":
+                        # Find matching player in our players_db
+                        norm_sleeper_name = sleeper_player.get("full_name", "").lower().replace(".", "").replace("'", "").replace("-", " ")
+                        for player in self.players_db.values():
+                            norm_db_name = player["name"].lower().replace(".", "").replace("'", "").replace("-", " ")
+                            if norm_db_name == norm_sleeper_name:
+                                current_status = player.get("injury_status", "").upper()
+                                # Update from Sleeper if not CUT/SUSPENDED (administrative statuses)
+                                if current_status not in ["CUT", "SUSPENDED"]:
+                                    player["injury_status"] = injury_status.upper()
+                                break
 
-                    # Sync to injury_records table
-                    injury_sync_result = sync_espn_injuries(league_data)
-                    logger.info(f"Injury records synced: {injury_sync_result.get('espn_injury_synced', 0)} records updated")
+                logger.info(f"Sleeper injury sync: {sleeper_injury_updates} players with injury status")
 
             except Exception as e:
-                logger.warning(f"ESPN injury sync failed: {e}")
+                logger.warning(f"Sleeper injury sync failed: {e}")
 
-            logger.info(f"Live NFL sync complete: {updated_count} trades, {cuts_count} cuts, {espn_injury_updates} ESPN injury updates, {len(self.players_db)} total verified.")
+            # Keep ESPN connection for Vegas data (spreads, implied points, etc.)
+            # ESPN is no longer primary for injuries, but still used for matchup analysis
+            espn_injury_updates = 0
+
+            logger.info(f"Live NFL sync complete: {updated_count} trades, {cuts_count} cuts, {sleeper_injury_updates} Sleeper injury updates, {len(self.players_db)} total verified.")
             return {
                 "status": "success",
                 "trades_updated": updated_count,
                 "cuts_detected": cuts_count,
-                "espn_injury_updates": espn_injury_updates,
+                "sleeper_injury_updates": sleeper_injury_updates,
                 "total_verified": len(self.players_db)
             }
         except Exception as e:
