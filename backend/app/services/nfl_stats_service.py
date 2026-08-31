@@ -344,11 +344,37 @@ class NFLStatsService:
                     if live_match.get("depth_chart_order"):
                         player["depth_chart_order"] = live_match.get("depth_chart_order")
 
-            logger.info(f"Live NFL sync complete: {updated_count} trades, {cuts_count} cuts, {len(self.players_db)} total verified.")
+            # Sync ESPN injury data
+            espn_injury_updates = 0
+            try:
+                from backend.app.services.espn_service import espn_service
+                if espn_service.is_connected and espn_service.espn_league_instance:
+                    for team in espn_service.espn_league_instance.teams:
+                        for player_obj in getattr(team, 'roster', []):
+                            player_name = getattr(player_obj, 'name', '')
+                            player_injury = getattr(player_obj, 'injuryStatus', None) or "ACTIVE"
+
+                            # Find matching player in our database
+                            norm_espn_name = player_name.lower().replace(".", "").replace("'", "").replace("-", " ")
+                            for player in self.players_db.values():
+                                norm_db_name = player["name"].lower().replace(".", "").replace("'", "").replace("-", " ")
+                                if norm_db_name == norm_espn_name:
+                                    current_status = player.get("injury_status", "").upper()
+                                    # Update injury status from ESPN, but preserve CUT and SUSPENDED
+                                    if player_injury and player_injury.upper() != "CUT" and current_status not in ["CUT", "SUSPENDED"]:
+                                        if player.get("injury_status") != player_injury:
+                                            player["injury_status"] = player_injury.upper()
+                                            espn_injury_updates += 1
+                                    break
+            except Exception as e:
+                logger.warning(f"ESPN injury sync failed: {e}")
+
+            logger.info(f"Live NFL sync complete: {updated_count} trades, {cuts_count} cuts, {espn_injury_updates} ESPN injury updates, {len(self.players_db)} total verified.")
             return {
                 "status": "success",
                 "trades_updated": updated_count,
                 "cuts_detected": cuts_count,
+                "espn_injury_updates": espn_injury_updates,
                 "total_verified": len(self.players_db)
             }
         except Exception as e:
