@@ -432,6 +432,23 @@ window.showPlayerExplanation = async function(playerId) {
             }
         }
 
+        // Projection Adjustment Breakdown
+        try {
+            const breakdownRes = await fetch(`${API_BASE}/players/${playerId}/injury-breakdown`);
+            if (breakdownRes.ok) {
+                const breakdownData = await breakdownRes.json();
+                const projCard = document.getElementById('modal-projection-adjustment');
+                if (projCard) {
+                    document.getElementById('modal-proj-original').textContent = breakdownData.projection.original;
+                    document.getElementById('modal-proj-factor').textContent = breakdownData.projection.injury_factor;
+                    document.getElementById('modal-proj-resulting').textContent = breakdownData.projection.resulting;
+                    projCard.classList.remove('hidden');
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load projection breakdown:', e);
+        }
+
         // Scouting Takeaway
         document.getElementById('modal-scouting-text').textContent = data.scouting_takeaway;
 
