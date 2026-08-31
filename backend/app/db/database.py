@@ -54,6 +54,19 @@ class DBCachedPlayer(Base):
     espn_projection = Column(Float, default=0.0)
     details = Column(JSON, default=dict)
 
+class DBInjuryRecord(Base):
+    __tablename__ = "injury_records"
+    id = Column(Integer, primary_key=True, index=True)
+    player_id = Column(String, index=True)  # normalized player key (e.g., "wr-marv")
+    player_name = Column(String, index=True)
+    status = Column(String, index=True, default="ACTIVE")  # ACTIVE, QUESTIONABLE, OUT, IR, PUP, SUSPENDED, CUT
+    body_part = Column(String, nullable=True)  # Hamstring, Calf, Illness, etc. (optional from ESPN)
+    timeline = Column(String, nullable=True)  # Day-to-day, Weeks 1-4, etc.
+    source = Column(String, index=True)  # ESPN or Sleeper
+    discount_factor = Column(Float, default=1.0)  # 0.0-1.0 (calculated from status + body_part)
+    last_updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    notes = Column(Text, nullable=True)  # Additional context (coaching quotes, etc.)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 

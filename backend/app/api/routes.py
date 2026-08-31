@@ -132,6 +132,24 @@ def get_drop_candidates(team_id: Optional[int] = 1):
     candidates = waiver_radar.evaluate_drop_candidates(team_id or 1)
     return {"count": len(candidates), "drop_candidates": candidates}
 
+# --- Injury Records Endpoints ---
+
+@router.get("/injuries/all")
+def get_all_injuries():
+    """Retrieve all injury records from database (ESPN/Sleeper sourced)"""
+    from backend.app.services.injury_records_service import get_all_injury_records
+    records = get_all_injury_records()
+    return {"count": len(records), "records": records}
+
+@router.get("/injuries/{player_id}")
+def get_player_injury(player_id: str):
+    """Retrieve injury record for a specific player"""
+    from backend.app.services.injury_records_service import get_injury_record
+    record = get_injury_record(player_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"No injury record found for {player_id}")
+    return record
+
 # --- Data Refresh Endpoints ---
 
 @router.post("/refresh/teams-and-players")

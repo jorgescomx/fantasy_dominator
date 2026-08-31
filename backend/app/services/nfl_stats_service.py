@@ -297,6 +297,7 @@ class NFLStatsService:
         """Syncs all players directly with live official NFL transactions and rosters."""
         try:
             from backend.app.services.live_nfl_sync import fetch_live_nfl_database, sync_cut_players
+            from backend.app.services.injury_records_service import sync_espn_injuries
             raw_feed = fetch_live_nfl_database()
             if not raw_feed:
                 return {"status": "error", "message": "Failed to fetch live NFL feed"}
@@ -344,17 +345,37 @@ class NFLStatsService:
                     if live_match.get("depth_chart_order"):
                         player["depth_chart_order"] = live_match.get("depth_chart_order")
 
-            # Sync ESPN injury data
+            # Sync ESPN injury data to both players_db and injury_records table
             espn_injury_updates = 0
             try:
                 from backend.app.services.espn_service import espn_service
                 if espn_service.is_connected and espn_service.espn_league_instance:
+                    # Build league data for injury_records_service
+                    league_data = {"teams": []}
                     for team in espn_service.espn_league_instance.teams:
+                        team_data = {
+                            "roster": []
+                        }
                         for player_obj in getattr(team, 'roster', []):
                             player_name = getattr(player_obj, 'name', '')
                             player_injury = getattr(player_obj, 'injuryStatus', None) or "ACTIVE"
+                            player_id = getattr(player_obj, 'playerId', getattr(player_obj, 'player_id', ''))
+                            injury_info = getattr(player_obj, 'injury', {})
+                            body_part = getattr(injury_info, 'displayName', None) if injury_info else None
 
-                            # Find matching player in our database
+                            team_data["roster"].append({
+                                "player": {
+                                    "id": player_id,
+                                    "fullName": player_name,
+                                    "injuryStatus": player_injury,
+                                    "injury": {
+                                        "displayName": body_part,
+                                        "detail": None
+                                    }
+                                }
+                            })
+
+                            # Find matching player in our players_db and update
                             norm_espn_name = player_name.lower().replace(".", "").replace("'", "").replace("-", " ")
                             for player in self.players_db.values():
                                 norm_db_name = player["name"].lower().replace(".", "").replace("'", "").replace("-", " ")
@@ -366,6 +387,13 @@ class NFLStatsService:
                                             player["injury_status"] = player_injury.upper()
                                             espn_injury_updates += 1
                                     break
+
+                        league_data["teams"].append(team_data)
+
+                    # Sync to injury_records table
+                    injury_sync_result = sync_espn_injuries(league_data)
+                    logger.info(f"Injury records synced: {injury_sync_result.get('espn_injury_synced', 0)} records updated")
+
             except Exception as e:
                 logger.warning(f"ESPN injury sync failed: {e}")
 
