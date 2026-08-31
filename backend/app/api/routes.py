@@ -89,7 +89,7 @@ def get_player_injury_breakdown(player_id: str):
             "injury_reason": injury_reason,
             "projection": {
                 "original": base_proj,
-                "injury_factor": injury_factor,
+                "injury_factor": "None" if injury_factor == 1.0 else injury_factor,
                 "resulting": resulting
             }
         }
