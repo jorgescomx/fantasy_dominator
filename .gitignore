@@ -1,5 +1,5 @@
 # Environment variables & Sensitive Credentials
-.env
+# .env  # Temporarily tracked for dev environment
 .env.local
 .env.*.local
 
