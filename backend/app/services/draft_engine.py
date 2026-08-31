@@ -366,14 +366,11 @@ class DraftEngine:
         return 0
 
     def _sniff_opponent_needs(self) -> List[Dict[str, Any]]:
-        """Identifies which positions opponent teams picking before you desperately need."""
-        current_team = self.get_current_picking_team()
+        """Identifies which positions opponent teams picking before your next turn desperately need."""
         threats = []
-        if current_team == self.user_pick:
-            return threats
 
-        # Look at the next few teams up to user's pick
-        current = self.current_pick_number
+        # Start from the next pick after current
+        current = self.current_pick_number + 1
         picks_to_check = min(8, self._calculate_picks_until_turn(current, self.user_pick))
         
         for offset in range(picks_to_check):
@@ -407,6 +404,8 @@ class DraftEngine:
             threats.append({
                 "team_id": t_id,
                 "team_name": self.get_team_name(t_id),
+                "pick_number": p_num,
+                "round": rnd,
                 "picks_away": offset + 1,
                 "urgent_need": primary_need
             })
