@@ -150,6 +150,31 @@ def get_player_injury(player_id: str):
         raise HTTPException(status_code=404, detail=f"No injury record found for {player_id}")
     return record
 
+# --- Context Continuity Endpoints ---
+
+@router.get("/context/{player_id}")
+def get_context_continuity(player_id: str):
+    """Retrieve context continuity (QB/OC/HC changes) and certainty factor for a player"""
+    from backend.app.services.context_continuity_service import get_player_context
+    context = get_player_context(player_id)
+    if not context:
+        raise HTTPException(status_code=404, detail=f"No context record found for {player_id}")
+    return context
+
+@router.get("/metrics/{player_id}")
+def get_player_metrics_breakdown(player_id: str):
+    """Retrieve metric breakdown (Projected | Context Factor | Recalculated)"""
+    from backend.app.services.context_continuity_service import get_player_metrics, get_player_context
+    metrics = get_player_metrics(player_id)
+    context = get_player_context(player_id)
+
+    if not metrics:
+        raise HTTPException(status_code=404, detail=f"No metrics found for {player_id}")
+
+    # Combine metrics with context info
+    metrics["context"] = context
+    return metrics
+
 # --- Data Refresh Endpoints ---
 
 @router.post("/refresh/teams-and-players")

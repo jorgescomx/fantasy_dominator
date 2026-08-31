@@ -140,15 +140,26 @@ class DraftEngine:
             "DEF": 10
         }
 
+        # Get context-adjusted projections for all players
+        from backend.app.services.context_continuity_service import get_player_context
+
         # Calculate replacement level points for each position among remaining/all pool
         replacement_points: Dict[str, float] = {}
         for pos, baseline_rank in position_baselines.items():
             pos_players = [p for p in all_players if p["position"] == pos]
-            pos_players_sorted = sorted(pos_players, key=lambda x: x["projected_season"], reverse=True)
+            # Use context-adjusted projections
+            pos_players_with_context = []
+            for p in pos_players:
+                context = get_player_context(p["id"])
+                context_factor = context.get("context_certainty", 1.0) if context else 1.0
+                adjusted_proj = p.get("projected_season", 0.0) * context_factor
+                pos_players_with_context.append((p, adjusted_proj))
+
+            pos_players_sorted = sorted(pos_players_with_context, key=lambda x: x[1], reverse=True)
             if len(pos_players_sorted) >= baseline_rank:
-                replacement_points[pos] = pos_players_sorted[baseline_rank - 1]["projected_season"]
+                replacement_points[pos] = pos_players_sorted[baseline_rank - 1][1]
             elif pos_players_sorted:
-                replacement_points[pos] = pos_players_sorted[-1]["projected_season"]
+                replacement_points[pos] = pos_players_sorted[-1][1]
             else:
                 replacement_points[pos] = 0.0
 
@@ -168,9 +179,27 @@ class DraftEngine:
         for p in available_players:
             item = dict(p)
             pos = item["position"]
+
+            # Get context-adjusted projection
+            context = get_player_context(p["id"])
+            context_factor = context.get("context_certainty", 1.0) if context else 1.0
+
+            # Get injury discount factor
+            from backend.app.services.injury_records_service import get_injury_record
+            injury = get_injury_record(p["id"])
+            injury_factor = injury.get("discount_factor", 1.0) if injury else 1.0
+
+            # Apply both factors: context × injury
+            base_projected = p.get("projected_season", 0.0)
+            adjusted_projected_season = base_projected * context_factor * injury_factor
+
             base_pts = replacement_points.get(pos, 0.0)
-            item["vorp"] = round(item["projected_season"] - base_pts, 1)
+            item["vorp"] = round(adjusted_projected_season - base_pts, 1)
             item["vorp_per_week"] = round(item["vorp"] / 16.0, 1)
+            item["context_certainty"] = context_factor
+            item["injury_discount"] = injury_factor
+            item["projected_season_adjusted"] = adjusted_projected_season
+            item["injury_status"] = injury.get("status", "ACTIVE") if injury else "ACTIVE"
             
             # Tier Cliff Detection
             tier = item["tier"]
@@ -429,44 +458,89 @@ class DraftEngine:
         position_baselines = {"QB": 10, "RB": 25, "WR": 25, "TE": 10, "K": 10, "DEF": 10}
         baseline_num = position_baselines.get(pos, 10)
 
-        # Build detailed metric cards
+        # Get context and metrics data for three-column display
+        from backend.app.services.context_continuity_service import get_player_context, get_player_metrics
+
+        player_context = get_player_context(player_id)
+        player_metrics_data = get_player_metrics(player_id)
+
+        context_certainty = 1.0
+        if player_context:
+            context_certainty = player_context.get("context_certainty", 1.0)
+
+        # Build detailed metric cards with context adjustment
         metrics = []
 
-        # 1. Expected Fantasy Points (xFP)
-        xfp_val = player.get("xfp", 10.0)
-        metrics.append({
-            "metric": "Expected Fantasy Points (xFP)",
-            "value": f"{xfp_val} xFP/gm",
-            "rating": "Elite" if xfp_val >= 18.0 else ("Strong" if xfp_val >= 14.0 else "Solid"),
-            "explanation": "Simulates expected fantasy scoring based on granular play-by-play volume (target depth, red zone carries, goal-line touches). Measures true role quality regardless of lucky or unlucky box score variance."
-        })
+        # Context Certainty Card (if changed)
+        if player_context and context_certainty < 1.0:
+            changes = player_context.get("context_changes", {})
+            warnings = []
+            if changes.get("qb_changed"):
+                warnings.append("QB changed")
+            if changes.get("oc_changed"):
+                warnings.append("OC changed")
+            if changes.get("hc_changed"):
+                warnings.append("HC changed")
 
-        # 2. Route Participation %
-        if pos in ["WR", "TE", "RB"]:
-            route_pct = player.get("route_participation", 0.0)
             metrics.append({
-                "metric": "Route Participation Rate",
-                "value": f"{int(route_pct * 100)}%",
-                "rating": "Alpha (90%+)" if route_pct >= 0.90 else ("Full-Time (80%+)" if route_pct >= 0.80 else "Part-Time"),
-                "explanation": "Percentage of total team passing plays where the player runs a pass route. Elite fantasy WRs consistently exceed 90%+ route participation."
+                "metric": "Context Continuity",
+                "value": f"{int(context_certainty * 100)}%",
+                "rating": "Stable" if context_certainty >= 0.9 else ("Adjusted" if context_certainty >= 0.7 else "Uncertain"),
+                "explanation": f"Environmental stability: {', '.join(warnings) if warnings else 'No changes'}. Metrics adjusted for {int((1 - context_certainty) * 100)}% environmental risk.",
+                "context_changes": changes
             })
 
-        # 3. High-Value Touches
-        hv = player.get("high_value_touches", 0.0)
+        # 1. Expected Fantasy Points (xFP) - THREE COLUMN FORMAT
+        xfp_projected = player.get("xfp", 10.0)
+        xfp_recalculated = xfp_projected * context_certainty if player_metrics_data else xfp_projected
+
         metrics.append({
-            "metric": "High-Value Touches (HVTs)",
-            "value": f"{hv}/game",
-            "rating": "Elite" if hv >= 5.0 else ("High" if hv >= 3.5 else "Moderate"),
-            "explanation": "Combines all targets plus carries inside the opponent 10-yard line. HVTs are worth ~2.5x more fantasy points per touch than standard between-the-20s carries."
+            "metric": "Expected Fantasy Points (xFP)",
+            "projected": f"{xfp_projected} xFP/gm (2025)",
+            "context_factor": f"{context_certainty}",
+            "recalculated": f"{round(xfp_recalculated, 2)} xFP/gm (2026)",
+            "rating": "Elite" if xfp_recalculated >= 18.0 else ("Strong" if xfp_recalculated >= 14.0 else "Solid"),
+            "explanation": "Simulates expected fantasy scoring based on granular play-by-play volume. 2025 baseline adjusted for QB/OC/HC changes."
         })
 
-        # 4. Red Zone Share
-        rz = player.get("red_zone_share", 0.0)
+        # 2. Route Participation % - THREE COLUMN FORMAT
+        if pos in ["WR", "TE", "RB"]:
+            route_pct_projected = player.get("route_participation", 0.0)
+            route_pct_recalculated = route_pct_projected * context_certainty
+
+            metrics.append({
+                "metric": "Route Participation Rate",
+                "projected": f"{int(route_pct_projected * 100)}% (2025)",
+                "context_factor": f"{context_certainty}",
+                "recalculated": f"{int(route_pct_recalculated * 100)}% (2026)",
+                "rating": "Alpha (90%+)" if route_pct_recalculated >= 0.90 else ("Full-Time (80%+)" if route_pct_recalculated >= 0.80 else "Part-Time"),
+                "explanation": "Percentage of team passing plays. Adjusted for QB change impact on target distribution."
+            })
+
+        # 3. High-Value Touches - THREE COLUMN FORMAT
+        hv_projected = player.get("high_value_touches", 0.0)
+        hv_recalculated = hv_projected * context_certainty
+
+        metrics.append({
+            "metric": "High-Value Touches (HVTs)",
+            "projected": f"{round(hv_projected, 2)}/game (2025)",
+            "context_factor": f"{context_certainty}",
+            "recalculated": f"{round(hv_recalculated, 2)}/game (2026)",
+            "rating": "Elite" if hv_recalculated >= 5.0 else ("High" if hv_recalculated >= 3.5 else "Moderate"),
+            "explanation": "Targets + carries in scoring zone. Adjusted for offensive system changes."
+        })
+
+        # 4. Red Zone Share - THREE COLUMN FORMAT
+        rz_projected = player.get("red_zone_share", 0.0)
+        rz_recalculated = rz_projected * context_certainty
+
         metrics.append({
             "metric": "Red Zone Opportunity Share",
-            "value": f"{int(rz * 100)}%",
-            "rating": "Dominant" if rz >= 0.35 else ("Strong" if rz >= 0.25 else "Moderate"),
-            "explanation": "Share of team scoring-zone opportunities converted into touches or targets. The single highest predictor of touchdown ceiling."
+            "projected": f"{int(rz_projected * 100)}% (2025)",
+            "context_factor": f"{context_certainty}",
+            "recalculated": f"{int(rz_recalculated * 100)}% (2026)",
+            "rating": "Dominant" if rz_recalculated >= 0.35 else ("Strong" if rz_recalculated >= 0.25 else "Moderate"),
+            "explanation": "Share of team RZ opportunities. Adjusted for coaching staff changes."
         })
 
         # 5. Vegas Environment

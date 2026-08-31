@@ -67,6 +67,57 @@ class DBInjuryRecord(Base):
     last_updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     notes = Column(Text, nullable=True)  # Additional context (coaching quotes, etc.)
 
+class DBPlayerContext(Base):
+    __tablename__ = "player_context"
+    id = Column(Integer, primary_key=True, index=True)
+    player_id = Column(String, index=True)  # normalized player key
+    player_name = Column(String, index=True)
+    position = Column(String, index=True)
+    team = Column(String, index=True)
+
+    # 2025 Context (previous season)
+    qb_2025 = Column(String, nullable=True)  # QB name in 2025
+    oc_2025 = Column(String, nullable=True)  # Offensive coordinator in 2025
+    hc_2025 = Column(String, nullable=True)  # Head coach in 2025
+
+    # 2026 Context (current season)
+    qb_2026 = Column(String, nullable=True)  # QB name in 2026
+    oc_2026 = Column(String, nullable=True)  # Offensive coordinator in 2026
+    hc_2026 = Column(String, nullable=True)  # Head coach in 2026
+
+    # Context Certainty (calculated)
+    context_certainty = Column(Float, default=1.0)  # 0.4-1.0
+    context_changes = Column(JSON, default=dict)  # {qb_changed: bool, oc_changed: bool, hc_changed: bool}
+
+    last_updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+class DBPlayerMetrics(Base):
+    __tablename__ = "player_metrics"
+    id = Column(Integer, primary_key=True, index=True)
+    player_id = Column(String, index=True)  # normalized player key
+    player_name = Column(String, index=True)
+
+    # Historical (2025) Metrics
+    xfp_projected = Column(Float, default=0.0)  # 2025 season xFP
+    route_participation_projected = Column(Float, default=0.0)  # 2025 route %
+    high_value_touches_projected = Column(Float, default=0.0)  # 2025 HVTs
+    red_zone_share_projected = Column(Float, default=0.0)  # 2025 RZ share
+    target_share_projected = Column(Float, default=0.0)  # 2025 target share
+    proe_projected = Column(Float, default=0.0)  # 2025 PROE
+
+    # Recalculated (adjusted by context certainty)
+    xfp_recalculated = Column(Float, default=0.0)
+    route_participation_recalculated = Column(Float, default=0.0)
+    high_value_touches_recalculated = Column(Float, default=0.0)
+    red_zone_share_recalculated = Column(Float, default=0.0)
+    target_share_recalculated = Column(Float, default=0.0)
+    proe_recalculated = Column(Float, default=0.0)
+
+    # Context factor applied
+    context_certainty = Column(Float, default=1.0)
+
+    last_updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
 def init_db():
     Base.metadata.create_all(bind=engine)
 
