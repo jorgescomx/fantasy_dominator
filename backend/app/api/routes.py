@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 
@@ -52,6 +53,50 @@ def get_player_rating_breakdown(player_id: str):
         return breakdown
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+@router.get("/players/{player_id}/injury-breakdown")
+def get_player_injury_breakdown(player_id: str):
+    """Get simple three-column injury discount: projected | injury factor | resulting."""
+    from backend.app.services.injury_records_service import get_injury_record
+
+    try:
+        # Find player
+        all_players = nfl_stats_service.get_all_players()
+        player = next((p for p in all_players if p.get("id") == player_id), None)
+
+        if not player:
+            raise HTTPException(status_code=404, detail=f"Player {player_id} not found")
+
+        # Get injury data
+        injury_record = get_injury_record(player_id)
+
+        base_proj = player.get("projected_season", 0)
+        injury_factor = 1.0
+        injury_status = "ACTIVE"
+        injury_reason = None
+
+        if injury_record and injury_record.get("status") not in ["ACTIVE", None]:
+            injury_factor = injury_record.get("discount_factor", 1.0)
+            injury_status = injury_record.get("status")
+            injury_reason = injury_record.get("body_part")
+
+        resulting = round(base_proj * injury_factor, 1)
+
+        return {
+            "player_id": player_id,
+            "player_name": player.get("name"),
+            "injury_status": injury_status,
+            "injury_reason": injury_reason,
+            "projection": {
+                "original": base_proj,
+                "injury_factor": injury_factor,
+                "resulting": resulting
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/league/overview")

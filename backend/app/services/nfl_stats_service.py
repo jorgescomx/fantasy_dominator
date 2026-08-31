@@ -204,11 +204,37 @@ class NFLStatsService:
             player.pop("injury_impact", None)
 
     def get_all_players(self) -> List[Dict[str, Any]]:
-        """Return full player list with contextual model calculations."""
+        """Return full player list with contextual model calculations and live injury data."""
+        from backend.app.services.injury_records_service import get_injury_record
+
         result = []
         for p in self.players_db.values():
             item = dict(p)
             item["contextual_proj"] = self._calculate_contextual_points(item)
+
+            # Pull live injury data from injury_records database
+            injury_record = get_injury_record(item.get("id"))
+            injury_discount_factor = 1.0
+            if injury_record and injury_record.get("status") not in ["ACTIVE", None]:
+                item["injury_status"] = injury_record.get("status")
+                item["injury_body_part"] = injury_record.get("body_part")
+                injury_discount_factor = injury_record.get("discount_factor", 1.0)
+                item["injury_discount_factor"] = injury_discount_factor
+
+            # Calculate and display effective projection with injury discount
+            base_proj = item.get("projected_season", 0)
+            effective_proj = base_proj * injury_discount_factor
+            item["effective_projected_season"] = round(effective_proj, 1)
+
+            # Show calculation breakdown for transparency
+            if injury_discount_factor < 1.0:
+                item["injury_calculation"] = {
+                    "base_projection": base_proj,
+                    "injury_discount_factor": injury_discount_factor,
+                    "effective_projection": round(effective_proj, 1),
+                    "points_lost": round(base_proj - effective_proj, 1)
+                }
+
             item["ceiling_proj"] = round(item["contextual_proj"] * 1.35, 1)
             item["floor_proj"] = round(item["contextual_proj"] * 0.65, 1)
             item["arbitrage_delta"] = round(item["contextual_proj"] - item["espn_proj"], 1)
@@ -355,12 +381,16 @@ class NFLStatsService:
 
                 # Update players_db with Sleeper injury data
                 sleeper_players = get_sleeper_players()
+                updated_from_sleeper = 0
+
                 for player_id, sleeper_player in sleeper_players.items():
                     injury_status = sleeper_player.get("injury_status", "ACTIVE")
 
                     if injury_status and injury_status.upper() != "ACTIVE":
-                        # Find matching player in our players_db
+                        # Try to find matching player in players_db by normalized name
                         norm_sleeper_name = sleeper_player.get("full_name", "").lower().replace(".", "").replace("'", "").replace("-", " ")
+
+                        found = False
                         for player in self.players_db.values():
                             norm_db_name = player["name"].lower().replace(".", "").replace("'", "").replace("-", " ")
                             if norm_db_name == norm_sleeper_name:
@@ -368,9 +398,14 @@ class NFLStatsService:
                                 # Update from Sleeper if not CUT/SUSPENDED (administrative statuses)
                                 if current_status not in ["CUT", "SUSPENDED"]:
                                     player["injury_status"] = injury_status.upper()
+                                    updated_from_sleeper += 1
+                                found = True
                                 break
 
-                logger.info(f"Sleeper injury sync: {sleeper_injury_updates} players with injury status")
+                        if not found:
+                            logger.debug(f"Could not match Sleeper player {sleeper_player.get('full_name')} to players_db")
+
+                logger.info(f"Sleeper injury sync: {sleeper_injury_updates} synced to DB, {updated_from_sleeper} updated in players_db")
 
             except Exception as e:
                 logger.warning(f"Sleeper injury sync failed: {e}")
