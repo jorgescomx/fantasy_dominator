@@ -798,11 +798,38 @@ body.dark-theme {
     border-radius: var(--radius-sm);
     border-left: 3px solid var(--accent-amber);
     transition: all 0.2s ease;
+    min-width: 0;
 }
 
 .threat-item:hover {
     background: rgba(255, 255, 255, 0.06);
     border-left-color: var(--accent-cyan);
+}
+
+.threat-team-info {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+}
+
+.threat-team-info strong {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.threat-meta {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .threat-info {
