@@ -25,14 +25,6 @@ INJURY_REGISTRY: Dict[str, Dict[str, Any]] = {
     },
 
     # Raiders
-    "josh jacobs": {
-        "status": "SUSPENDED",
-        "type": "Administrative Suspension",
-        "timeline": "Administrative - Duration TBD",
-        "notes": "Josh Jacobs is subject to an administrative suspension pending league review or appeal.",
-        "impact_summary": "100% discount (0.0 pts) — unavailable for play during suspension",
-        "discount_factor": 0.0
-    },
     "ashton jeanty": {
         "status": "QUESTIONABLE",
         "type": "Precautionary Scrimmage Tweak",
