@@ -336,7 +336,9 @@ class NFLStatsService:
                         updated_count += 1
 
                     live_injury = live_match.get("injury_status")
-                    if live_injury and live_injury.upper() != "CUT":
+                    current_status = player.get("injury_status", "").upper()
+                    # Preserve administrative statuses (SUSPENDED) that were manually set
+                    if live_injury and live_injury.upper() != "CUT" and current_status not in ["SUSPENDED", "CUT"]:
                         player["injury_status"] = live_injury.upper()
 
                     if live_match.get("depth_chart_order"):
