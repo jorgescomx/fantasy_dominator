@@ -371,11 +371,11 @@ class DraftEngine:
 
         # Calculate how many picks until user's turn from current pick
         picks_until_user = self._calculate_picks_until_turn(self.current_pick_number, self.user_pick)
-        # Show opponents until (but not including) user's next turn
-        picks_to_check = min(8, max(0, picks_until_user - 1))
+        # Show all opponents until (but not including) user's next turn
+        picks_to_check = min(8, picks_until_user)
 
         for offset in range(picks_to_check):
-            p_num = self.current_pick_number + offset + 1
+            p_num = self.current_pick_number + offset
             rnd = ((p_num - 1) // self.num_teams) + 1
             pin_rnd = ((p_num - 1) % self.num_teams) + 1
             t_id = pin_rnd if (rnd % 2 == 1) else (self.num_teams - pin_rnd + 1)
