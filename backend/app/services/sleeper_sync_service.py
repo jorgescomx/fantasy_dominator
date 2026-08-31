@@ -57,9 +57,16 @@ def sync_sleeper_injuries() -> Dict[str, Any]:
                 from backend.app.services.injury_records_service import calculate_discount_factor
                 discount_factor = calculate_discount_factor(injury_status, body_part)
 
+                # Format player_id to match players_db format (e.g., "wr-7564" instead of "7564")
+                position = player_data.get("position", "").lower()
+                if position and not player_id.startswith(position):
+                    formatted_player_id = f"{position}-{player_id}"
+                else:
+                    formatted_player_id = player_id
+
                 # Upsert into database
                 record = db.query(DBInjuryRecord).filter(
-                    DBInjuryRecord.player_id == player_id
+                    DBInjuryRecord.player_id == formatted_player_id
                 ).first()
 
                 if record:
@@ -71,7 +78,7 @@ def sync_sleeper_injuries() -> Dict[str, Any]:
                     record.last_updated_at = datetime.utcnow()
                 else:
                     record = DBInjuryRecord(
-                        player_id=player_id,
+                        player_id=formatted_player_id,
                         player_name=player_name,
                         status=injury_status,
                         body_part=body_part,
