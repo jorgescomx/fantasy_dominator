@@ -375,11 +375,15 @@ class DraftEngine:
         picks_to_check = min(8, picks_until_user)
 
         for offset in range(picks_to_check):
+            # Skip the current pick (who's on the clock right now)
+            if offset == 0:
+                continue
+
             p_num = self.current_pick_number + offset
             rnd = ((p_num - 1) // self.num_teams) + 1
             pin_rnd = ((p_num - 1) % self.num_teams) + 1
             t_id = pin_rnd if (rnd % 2 == 1) else (self.num_teams - pin_rnd + 1)
-            
+
             if t_id == self.user_pick:
                 continue
                 
